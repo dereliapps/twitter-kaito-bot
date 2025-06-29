@@ -117,6 +117,10 @@ TWEET_LENGTHS = {
     "long": {"weight": 25, "min": 1000, "max": 1500, "style": "analysis"}   # %25 - Uzun analiz
 }
 
+# Rate limiting için son tweet zamanı
+last_tweet_time = None
+MINIMUM_INTERVAL = 15 * 60  # 15 dakika (saniye)
+
 def create_oauth_signature(method, url, params, consumer_secret, token_secret):
     """OAuth 1.0a signature oluştur"""
     # Parametreleri encode et ve sırala
@@ -500,7 +504,18 @@ def test_twitter():
         return False
 
 def send_tweet(content):
-    """Tweet gönder"""
+    """Tweet gönder - Rate limiting ile"""
+    global last_tweet_time
+    
+    # Rate limiting kontrolü
+    current_time = time.time()
+    if last_tweet_time:
+        time_since_last = current_time - last_tweet_time
+        if time_since_last < MINIMUM_INTERVAL:
+            wait_time = MINIMUM_INTERVAL - time_since_last
+            print(f"⏳ Rate limiting: {wait_time/60:.1f} dakika beklemek gerekiyor...")
+            return False
+    
     url = "https://api.twitter.com/2/tweets"
     auth_header = create_oauth_header("POST", url)
     headers = {"Authorization": auth_header, "Content-Type": "application/json"}
@@ -511,11 +526,16 @@ def send_tweet(content):
     if response.status_code == 201:
         result = response.json()
         tweet_id = result['data']['id']
+        last_tweet_time = current_time  # Başarılı tweet sonrası zamanı güncelle
         print(f"✅ Tweet gönderildi!")
         print(f"📝 İçerik: {content}")
         print(f"🔗 Tweet ID: {tweet_id}")
         print(f"📊 Uzunluk: {len(content)} karakter")
         return True
+    elif response.status_code == 429:
+        print(f"⚠️ Twitter API rate limit! 15 dakika bekliyorum...")
+        print("🔄 Bot otomatik olarak bekleyecek ve daha sonra dener")
+        return False
     else:
         print(f"❌ Tweet gönderme hatası: {response.text}")
         return False
@@ -559,11 +579,23 @@ def create_enhanced_tweet():
 def auto_tweet():
     """Otomatik tweet fonksiyonu"""
     print(f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Otomatik tweet başlatılıyor...")
+    
+    # Rate limiting kontrolü
+    global last_tweet_time
+    if last_tweet_time:
+        time_since_last = time.time() - last_tweet_time
+        if time_since_last < MINIMUM_INTERVAL:
+            wait_time = MINIMUM_INTERVAL - time_since_last
+            print(f"⏳ Rate limiting aktif: {wait_time/60:.1f} dakika daha beklemeli")
+            return False
+    
     success = create_enhanced_tweet()
     if success:
         print("✅ Otomatik tweet tamamlandı!")
     else:
         print("❌ Otomatik tweet başarısız!")
+    
+    return success
 
 def auto_bot():
     """7/24 otomatik bot"""
@@ -583,10 +615,18 @@ def auto_bot():
     print("🚀 İlk tweet atılıyor...")
     auto_tweet()
     
-    # Schedule ayarla: Her 2-4 saatte bir rastgele
-    schedule.every().hour.do(lambda: auto_tweet() if random.randint(1, 100) <= 30 else None)
+    # Schedule ayarla: Her 2-4 saatte bir rastgele (rate limiting ile)
+    def safe_auto_tweet():
+        if random.randint(1, 100) <= 30:
+            print("🎲 Şans tuttu! Tweet deneniyor...")
+            return auto_tweet()
+        else:
+            print("🎲 Bu sefer pas geçiliyor...")
+            return False
     
-    print("⏰ Bot schedule'ı ayarlandı: Her saat %30 ihtimalle tweet")
+    schedule.every().hour.do(safe_auto_tweet)
+    
+    print("⏰ Bot schedule'ı ayarlandı: Her saat %30 ihtimalle tweet (rate limiting korumalı)")
     print("🔄 Bot çalışmaya başladı! Ctrl+C ile durdurun.")
     
     # Sonsuz döngü
