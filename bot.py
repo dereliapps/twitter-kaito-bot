@@ -23,6 +23,10 @@ bearer_token = os.getenv('TWITTER_BEARER_TOKEN')
 openai_key = os.getenv('OPENAI_API_KEY')
 
 # API key kontrolü
+print(f"🔍 API Key Kontrolü:")
+print(f"   Twitter API Key: {'✅' if api_key else '❌'}")
+print(f"   OpenAI Key: {'✅' if openai_key else '❌'} (uzunluk: {len(openai_key) if openai_key else 0})")
+
 if not all([api_key, api_secret, access_token, access_secret, openai_key]):
     print("❌ Environment variables eksik! Heroku Config Vars'ı kontrol edin.")
     print("Gerekli variables: TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET, OPENAI_API_KEY")
@@ -100,9 +104,9 @@ projects = {
 
 # Tweet uzunluk kategorileri
 TWEET_LENGTHS = {
-    "short": {"weight": 25, "min": 120, "max": 250, "style": "punch"},    # %25 - Kısa & Punch
-    "medium": {"weight": 50, "min": 250, "max": 300, "style": "normal"},  # %50 - Normal 
-    "long": {"weight": 25, "min": 300, "max": 650, "style": "analysis"}   # %25 - Uzun analiz
+    "short": {"weight": 25, "min": 300, "max": 500, "style": "punch"},    # %25 - Kısa & Punch
+    "medium": {"weight": 50, "min": 500, "max": 1000, "style": "normal"},  # %50 - Normal 
+    "long": {"weight": 25, "min": 1000, "max": 1500, "style": "analysis"}   # %25 - Uzun analiz
 }
 
 def create_oauth_signature(method, url, params, consumer_secret, token_secret):
@@ -271,52 +275,25 @@ def get_enhanced_ai_tweet(project_key, sentiment_data, target_length):
     project = projects[project_key]
     length_config = target_length
     
-    # Ultra doğal crypto insider prompts
+    # Etkili ChatGPT prompts
     style_prompts = {
-        "punch": f"""kim takip ediyor {project['mention']} projesini?
+        "punch": f"""{project['mention']} hakkında çok kısa tweet yaz.
 
-context: {random.choice(project['trends'])}
-token status: {project['token_status']}
+Örnek stil: "kim takip ediyor @mitosisorg'u? tge yaklaşıyor sanki. kaçırmayın"
 
-tarzın:
-- gerçek crypto trader gibi casual türkçe
-- "kim takip ediyor", "bence", "açıkçası" gibi doğal başlangıçlar
-- {length_config['min']}-{length_config['max']} karakter
-- sadece {project['mention']} mention et
-- uzun çizgi (-) kullanma hiç
-- thread değil tek tweet""",
+{length_config['min']}-{length_config['max']} karakter arasında yaz.""",
         
-        "normal": f"""{project['mention']} hakkında görüşlerini paylaş.
+        "normal": f"""{project['mention']} hakkında normal uzunlukta tweet yaz.
 
-bilgiler:
-- {random.choice(project['trends'])}
-- {project['specialty']}
-- {project['token_status']} durumda
+Örnek stil: "bence @anoma farklı bir yerde duruyor. mahremiyet alanında çok ciddi çalışıyorlar. henüz mainstream olmamış ama potansiyeli var"
 
-nasıl yaz:
-- gerçek crypto insider gibi türkçe
-- kişisel görüş ver: "bence", "sanki", "gibi geliyor"
-- {length_config['min']}-{length_config['max']} karakter
-- sadece {project['mention']} mention
-- uzun çizgi (-) kullanma
-- casual ton, AI gibi formal değil""",
+{length_config['min']}-{length_config['max']} karakter arasında yaz.""",
         
-        "analysis": f"""{project['mention']} için daha uzun analiz tweet'i yaz.
+        "analysis": f"""{project['mention']} hakkında uzun analiz tweet'i yaz.
 
-detaylar:
-- {project['specialty']}
-- {project['ecosystem']}
-- {project['price_action']}
-- {random.choice(project['trends'])}
+Örnek stil: "kim analiz ediyor @virtuals_io son durumunu? AI token sektöründe çok hızlı büyüyor. 2024'te AI ajanlar mainstream olacak gibi gözüküyor. erken girenlerin şansı var bence"
 
-şartlar:
-- gerçek crypto analyst gibi türkçe
-- "anyone else tracking" tarzı casual başlangıçlar
-- kişisel görüş: "bence bu", "açıkçası", "sanki"
-- {length_config['min']}-{length_config['max']} karakter
-- sadece {project['mention']} mention
-- uzun çizgi (-) hiç kullanma
-- doğal konuşma tonu, AI değil"""
+{length_config['min']}-{length_config['max']} karakter arasında yaz."""
     }
     
     prompt = style_prompts[length_config['style']]
@@ -327,132 +304,117 @@ detaylar:
     data = {
         "model": "gpt-4o-mini",
         "messages": [
-            {"role": "system", "content": f"""sen crypto piyasasında olan sıradan bir türksün. yıllardır piyasayı takip ediyorsun.
+            {"role": "system", "content": f"""sen crypto piyasasını takip eden türk birisisin. çok doğal türkçe konuş.
 
-nasıl tweet atacaksın:
-- gerçek crypto insider gibi türkçe konuş
-- "kim takip ediyor", "bence", "açıkçası", "sanki" gibi doğal kelimeler kullan
-- {project['mention']} projesini mention et
-- {length_config['min']}-{length_config['max']} karakter olsun
-- uzun çizgi (-) hiç kullanma
-- thread atma, tek tweet
-- AI gibi formal değil, arkadaşına konuşuyormuş gibi
-- hashtag kullanma
+SADECE tweet yaz, başka hiçbir şey yazma.
 
-example style: "kim takip ediyor @project'i? açıkçası bence bu proje farklı bir yerde, sanki piyasa henüz fark etmedi."""},
+Kurallar:
+- {length_config['min']}-{length_config['max']} karakter
+- {project['mention']} mention et
+- uzun çizgi (-) kullanma hiç
+- gerçek insan gibi casual konuş
+- tek tweet, thread değil"""},
             {"role": "user", "content": prompt}
         ],
-        "max_tokens": 300,
-        "temperature": 0.9
+        "max_tokens": 400,
+        "temperature": 1.0
     }
     
     try:
+        print(f"🤖 ChatGPT API çağrısı yapılıyor...")
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
+        
+        print(f"📡 API Response Status: {response.status_code}")
         
         if response.status_code == 200:
             result = response.json()
             tweet = result['choices'][0]['message']['content'].strip()
+            
+            print(f"✅ ChatGPT Tweet: {tweet}")
             
             # Uzun çizgi kontrolü ve temizlik
             tweet = tweet.replace('—', ' ')
             tweet = tweet.replace('–', ' ')
             tweet = tweet.replace('-', ' ')
             
-            # Uzunluk kontrolü
-            if length_config['min'] <= len(tweet) <= length_config['max']:
-                return tweet
-            else:
-                # Uzunluk uygun değilse fallback
-                return create_fallback_tweet(project_key, length_config)
+            # Uzunluk kontrolü - eğer uygun değilse kısalt veya uzat
+            if len(tweet) > length_config['max']:
+                tweet = tweet[:length_config['max']-3] + "..."
+                print(f"✂️ Tweet kısaltıldı: {len(tweet)} karakter")
+            elif len(tweet) < length_config['min']:
+                tweet += " takip etmeye değer bence."
+                print(f"📏 Tweet uzatıldı: {len(tweet)} karakter")
+            
+            print(f"✅ ChatGPT tweet kullanılıyor!")
+            return tweet
         else:
-            print(f"❌ AI API hatası: {response.text}")
-            return create_fallback_tweet(project_key, length_config)
+            print(f"❌ AI API hatası: {response.status_code} - {response.text}")
+            # Tekrar dene, farklı prompt ile
+            return retry_chatgpt(project_key, length_config, attempt=1)
             
     except Exception as e:
         print(f"❌ AI request hatası: {e}")
-        return create_fallback_tweet(project_key, length_config)
+        # Tekrar dene
+        return retry_chatgpt(project_key, length_config, attempt=1)
 
-def create_fallback_tweet(project_key, length_config):
-    """AI çalışmazsa fallback tweet oluştur - ULTRA NATURAL"""
-    project = projects[project_key]
-    mention = project['mention']
-    style = length_config['style']
-    token_status = project['token_status']
+def retry_chatgpt(project_key, length_config, attempt):
+    """ChatGPT'yi tekrar dene"""
+    if attempt > 3:
+        print(f"❌ 3 deneme başarısız! Basit tweet kullanılacak.")
+        return f"kim takip ediyor {projects[project_key]['mention']}? bence ilginç proje."
     
-    # Token durumuna göre farklı yaklaşım
-    if token_status == "pre_token":
-        fallback_templates = {
-            "punch": [
-                f"kim takip ediyor {mention} projesini? {random.choice(project['trends'])}",
-                f"{mention} hâlâ radarın altında. {project['price_action']}",
-                f"bence {mention} farklı bir yerde. {project['specialty']} alan kızışıyor",
-                f"açıkçası {mention} henüz fark edilmedi. {random.choice(project['trends'])}",
-                f"{mention} sessizce büyüyor gibi. {project['price_action']}",
-                f"sanki {mention} henüz mainstream değil. {project['specialty']} alan patlamak üzere"
-            ],
-            
-            "normal": [
-                f"{mention} son durumu ilginç. {random.choice(project['trends'])} haberi {project['focus']} alanında güçlendiriyor onu. {project['price_action']} durum umut verici.",
-                f"bence {mention} takip edilmeli. {project['specialty']} geliştirmeleri {project['price_action']} durumu ile uyumlu. {project['ecosystem']} alan değişiyor.",
-                f"açıkçası {mention} hareketli günler geçiriyor. {random.choice(project['trends'])} gelişmesi {project['focus']} alanında öne çıkarıyor. {project['price_action']} mevcut durum.",
-                f"sanki {mention} farklı bir momentum'da. {random.choice(project['trends'])} haberi pozisyonunu güçlendiriyor. {project['price_action']} hikayesi var.",
-                f"kim takip ediyor {mention} son gelişmelerini? {project['specialty']} çalışmaları ile {project['price_action']} kombini potansiyel yaratıyor. {project['ecosystem']} geleceği parlak."
-            ],
-            
-            "analysis": [
-                f"kim takip ediyor {mention} gelişmelerini? {random.choice(project['trends'])} durumu {project['focus']} alanında ciddi momentum yaratıyor. {project['specialty']} yaklaşımı rakiplerinden ayrıştırıyor. {project['price_action']} durumu kurumsal ilgi demek. {project['ecosystem']} altyapısı uzun vadeli değer yaratabilir. erken aşama ama fundamentaller uyumlu gibi.",
-                f"bence {mention} detaylı bakılması gereken projeler arasında. {project['ecosystem']} sektörü kızışıyor, {project['specialty']} ile iyi konumdalar. {random.choice(project['trends'])} gelişmesi güçlü icraat göstergesi. {project['price_action']} pazar tanınırlığı var. {project['focus']} hikayesi kurumsal oyuncular arasında ivme kazanıyor.",
-                f"açıkçası {mention} teknik ve temel bakışta umut verici. {project['specialty']} teknoloji stack'i {project['focus']} alanındaki sorunları çözmeye odaklanmış. {random.choice(project['trends'])} gelişmesi ürün pazar uyumu ilerlemesi. {project['price_action']} erken biriktirme aşaması olabilir. {project['ecosystem']} pozisyonu genişleme fırsatları yaratıyor."
-            ]
-        }
-    else:  # active token
-        fallback_templates = {
-            "punch": [
-                f"{mention} şu an farklı bir momentumda. {random.choice(project['trends'])}",
-                f"bence {mention} performans gösteriyor. {project['price_action']}",
-                f"açıkçası {mention} rakiplerini geçti geçiyor. {project['specialty']} alanında",
-                f"kim takip ediyor {mention} hareketlerini? {random.choice(project['trends'])}",
-                f"sanki {mention} ivme kazandı. {project['price_action']}",
-                f"{mention} bu dönemde güçlü duruyor. {project['specialty']} dominantlığı"
-            ],
-            
-            "normal": [
-                f"{mention} piyasada güçlü hareket yapıyor. {random.choice(project['trends'])} gelişmesi {project['focus']} sektöründeki liderliğini pekiştiriyor. {project['price_action']} mevcut trendi yansıtıyor.",
-                f"bence {mention} takip etmeye değer. {project['specialty']} alanındaki ilerlemeler {project['price_action']} ile destekleniyor. {project['ecosystem']} ekosistemi olgunlaşıyor.",
-                f"açıkçası {mention} son durum iyi. {random.choice(project['trends'])} bu momentum {project['focus']} alanında güçlü konumunu gösteriyor. {project['price_action']} hikayeyi doğruluyor.",
-                f"kim takip ediyor {mention} son performansını? {project['specialty']} geliştirmeleri {project['price_action']} ile uyumlu ilerliyor. {project['ecosystem']} büyüme gösteriyor."
-            ],
-            
-            "analysis": [
-                f"kim analiz ediyor {mention} son durumunu? {random.choice(project['trends'])} gelişmesi {project['focus']} piyasasında güçlü pozisyonu doğruluyor. {project['specialty']} stratejisi rekabet avantajı sağlıyor. {project['price_action']} kurumsal kabul yansıtıyor. {project['ecosystem']} altyapısı sürdürülebilir büyüme için sağlam temel.",
-                f"bence {mention} piyasa görünümü güçlü. {project['ecosystem']} sektöründe güçlü trend, {project['specialty']} ile rekabetçi avantaj var. {random.choice(project['trends'])} gelişmesi operasyonel mükemmellik gösteriyor. {project['price_action']} piyasa tanınırlığı yansıtıyor. {project['focus']} hikayesi ana akım benimseme kazanıyor.",
-                f"açıkçası {mention} kapsamlı değerlendirmede umut verici. {project['specialty']} teknoloji stack'i {project['focus']} alanındaki kritik ihtiyaçları karşılıyor. {random.choice(project['trends'])} gelişmesi pazar penetrasyonu artışı gösteriyor. {project['price_action']} değer keşfi süreci yansıtıyor. {project['ecosystem']} pozisyonu organik büyüme fırsatları yaratıyor."
-            ]
-        }
+    print(f"🔄 ChatGPT tekrar deneniyor... (deneme {attempt}/3)")
     
-    selected_template = random.choice(fallback_templates[style])
+    # Daha basit prompt ile tekrar dene
+    simple_prompt = f"""{projects[project_key]['mention']} hakkında {length_config['min']}-{length_config['max']} karakter tweet yaz.
+
+Örnek: "kim takip ediyor @anoma'yı? mahremiyet alanında çalışıyor, potansiyeli var bence" """
     
-    # Uzun çizgi temizlik
-    selected_template = selected_template.replace('—', ' ')
-    selected_template = selected_template.replace('–', ' ')
-    selected_template = selected_template.replace('-', ' ')
+    headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
+    data = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "user", "content": simple_prompt}
+        ],
+        "max_tokens": 350,
+        "temperature": 1.0
+    }
     
-    # Uzunluk kontrolü ve ayarlama
-    if len(selected_template) < length_config['min']:
-        # Çok kısa ise rastgele detay ekle
-        random_additions = [
-            f" {project['focus']} alan iyice kızışıyor.",
-            f" bu projeyi takip etmek lazım.",
-            f" {project['specialty']} konusu trending.",
-            f" piyasa henüz fark etmedi.",
-            f" yakında büyük hareket olabilir."
-        ]
-        selected_template += random.choice(random_additions)
-    elif len(selected_template) > length_config['max']:
-        # Çok uzun ise kısalt
-        selected_template = selected_template[:length_config['max']-3] + "..."
+    try:
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
+        if response.status_code == 200:
+            result = response.json()
+            tweet = result['choices'][0]['message']['content'].strip()
+            tweet = tweet.replace('—', ' ').replace('–', ' ').replace('-', ' ')
+            print(f"✅ Retry başarılı: {tweet}")
+            return tweet
+        else:
+            return retry_chatgpt(project_key, length_config, attempt + 1)
+    except:
+        return retry_chatgpt(project_key, length_config, attempt + 1)
+
+
+
+def test_openai():
+    """OpenAI API test"""
+    headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
+    data = {
+        "model": "gpt-4o-mini",
+        "messages": [{"role": "user", "content": "test"}],
+        "max_tokens": 10
+    }
     
-    return selected_template
+    try:
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
+        if response.status_code == 200:
+            print(f"✅ OpenAI API çalışıyor!")
+            return True
+        else:
+            print(f"❌ OpenAI API hatası: {response.status_code} - {response.text}")
+            return False
+    except Exception as e:
+        print(f"❌ OpenAI API exception: {e}")
+        return False
 
 def test_twitter():
     """Twitter API test"""
@@ -540,10 +502,15 @@ def auto_bot():
     """7/24 otomatik bot"""
     print("🤖 Enhanced Kaito Twitter Bot v4 başlatılıyor...")
     
-    # Twitter API testi
+    # API testleri
     if not test_twitter():
         print("❌ Twitter API bağlantısı başarısız! Bot durduruluyor.")
         return
+    
+    if not test_openai():
+        print("⚠️ OpenAI API çalışmıyor! Sadece basit template'ler kullanılacak.")
+    else:
+        print("✅ Tüm API'ler çalışıyor!")
     
     # İlk tweet'i hemen at
     print("🚀 İlk tweet atılıyor...")
