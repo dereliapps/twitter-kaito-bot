@@ -24,8 +24,16 @@ openai_key = os.getenv('OPENAI_API_KEY')
 
 # API key kontrolü
 print(f"🔍 API Key Kontrolü:")
-print(f"   Twitter API Key: {'✅' if api_key else '❌'}")
+print(f"   Twitter API Key: {'✅' if api_key else '❌'} {f'({api_key[:10]}...)' if api_key else ''}")
 print(f"   OpenAI Key: {'✅' if openai_key else '❌'} (uzunluk: {len(openai_key) if openai_key else 0})")
+if openai_key:
+    print(f"   OpenAI Key başı: {openai_key[:20]}...")
+    print(f"   OpenAI Key sonu: ...{openai_key[-10:]}")
+
+print(f"🌍 Environment Variables:")
+for key in ['TWITTER_API_KEY', 'TWITTER_API_SECRET', 'TWITTER_ACCESS_TOKEN', 'TWITTER_ACCESS_SECRET', 'OPENAI_API_KEY']:
+    value = os.getenv(key)
+    print(f"   {key}: {'✅ SET' if value else '❌ MISSING'}")
 
 if not all([api_key, api_secret, access_token, access_secret, openai_key]):
     print("❌ Environment variables eksik! Heroku Config Vars'ı kontrol edin.")
@@ -322,9 +330,13 @@ Kurallar:
     
     try:
         print(f"🤖 ChatGPT API çağrısı yapılıyor...")
+        print(f"🔑 API Key başı: {openai_key[:20]}..." if openai_key else "❌ API Key YOK!")
+        print(f"📝 Prompt: {prompt[:100]}...")
+        
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
         
         print(f"📡 API Response Status: {response.status_code}")
+        print(f"📄 Response Headers: {dict(response.headers)}")
         
         if response.status_code == 200:
             result = response.json()
@@ -348,12 +360,17 @@ Kurallar:
             print(f"✅ ChatGPT tweet kullanılıyor!")
             return tweet
         else:
-            print(f"❌ AI API hatası: {response.status_code} - {response.text}")
+            print(f"❌ AI API hatası: {response.status_code}")
+            print(f"❌ Response body: {response.text}")
+            print(f"❌ Request data: {data}")
             # Tekrar dene, farklı prompt ile
             return retry_chatgpt(project_key, length_config, attempt=1)
             
     except Exception as e:
-        print(f"❌ AI request hatası: {e}")
+        print(f"❌ AI request exception: {e}")
+        print(f"❌ Exception type: {type(e)}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
         # Tekrar dene
         return retry_chatgpt(project_key, length_config, attempt=1)
 
@@ -381,7 +398,10 @@ def retry_chatgpt(project_key, length_config, attempt):
     }
     
     try:
+        print(f"🔄 Retry API çağrısı yapılıyor...")
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
+        print(f"🔄 Retry Response Status: {response.status_code}")
+        
         if response.status_code == 200:
             result = response.json()
             tweet = result['choices'][0]['message']['content'].strip()
@@ -389,8 +409,10 @@ def retry_chatgpt(project_key, length_config, attempt):
             print(f"✅ Retry başarılı: {tweet}")
             return tweet
         else:
+            print(f"❌ Retry hatası: {response.status_code} - {response.text}")
             return retry_chatgpt(project_key, length_config, attempt + 1)
-    except:
+    except Exception as e:
+        print(f"❌ Retry exception: {e}")
         return retry_chatgpt(project_key, length_config, attempt + 1)
 
 
