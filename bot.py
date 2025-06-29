@@ -283,25 +283,25 @@ def get_enhanced_ai_tweet(project_key, sentiment_data, target_length):
     project = projects[project_key]
     length_config = target_length
     
-    # SAMİMİ PROMPT'LAR - @ İLE BAŞLATMA!
+    # SORU SORMA, BİLGİ VER!
     style_prompts = {
-        "punch": f"""HASHTAG YOK! @ ile başlatma! {project['mention']} hakkında {length_config['min']}-{length_config['max']} karakter tweet yaz.
+        "punch": f"""soru sorma! {project['mention']} hakkında {length_config['min']}-{length_config['max']} karakter tweet yaz.
 
-ÖRNEK: "ya şu {project['mention']} projesini kim takip ediyor? bence fena değil gibi"
+ÖRNEK: "ya {project['mention']} baya ilginç proje aslında. {project['focus']} alanında çalışıyorlar, potansiyeli var bence"
 
-arkadaşına konuşur gibi samimi ol!""",
+küçük harf, samimi, bilgi ver!""",
         
-        "normal": f"""HASHTAG YOK! @ ile başlatma! {project['mention']} hakkında {length_config['min']}-{length_config['max']} karakter tweet yaz.
+        "normal": f"""soru sorma! {project['mention']} hakkında {length_config['min']}-{length_config['max']} karakter tweet yaz.
 
-ÖRNEK: "bence şu {project['mention']} farklı bir yerde duruyor ya. {project['focus']} alanında çalışıyorlar sanki. henüz mainstream olmamış ama potansiyeli var gibi geliyor"
+ÖRNEK: "bence {project['mention']} gerçekten farklı bir yerde duruyor. {project['focus']} alanında ciddi işler yapıyorlar. henüz mainstream değil ama gelecekte büyük olabilir gibi geliyor"
 
-arkadaşına konuşur gibi samimi ol!""",
+küçük harf, samimi, bilgi ver!""",
         
-        "analysis": f"""HASHTAG YOK! @ ile başlatma! {project['mention']} hakkında {length_config['min']}-{length_config['max']} karakter uzun analiz yaz.
+        "analysis": f"""soru sorma! {project['mention']} hakkında {length_config['min']}-{length_config['max']} karakter uzun analiz yaz.
 
-ÖRNEK: "şu {project['mention']} son durumunu kim analiz ediyor ya? {project['focus']} sektöründe çok hızlı büyüyor sanki. erken girenlerin şansı var bence. bu projeyi takip etmek lazım gibi geliyor"
+ÖRNEK: "{project['mention']} son zamanlarda baya hareketli. {project['focus']} sektöründe büyüme gösteriyorlar. erken yatırımcılar için fırsat olabilir. teknolojileri sağlam duruyor, gelecekte büyük oyuncu olma ihtimali var"
 
-arkadaşına konuşur gibi samimi ol!"""
+küçük harf, samimi, spekülasyon yapabilirsin!"""
     }
     
     prompt = style_prompts[length_config['style']]
@@ -312,21 +312,22 @@ arkadaşına konuşur gibi samimi ol!"""
     data = {
         "model": "gpt-4o-mini",
         "messages": [
-            {"role": "system", "content": f"""sen arkadaşın gibi konuşan bir türksün. crypto ile ilgileniyorsun.
+            {"role": "system", "content": f"""sen crypto'yla ilgilenen samimi bir türksün. arkadaşına konuşur gibi doğal ol.
 
-KESINLIKLE YAPMA:
-- HASHTAG KULLANMA (#bitcoin, #crypto vs. HİÇBİRİNİ)
-- TWEET'İ @ İLE BAŞLATMA (mention ortada olsun)
-- UZUN ÇİZGİ KULLANMA (-, —, –)
-- FORMAL DİL
+YAPMA:
+- hashtag kullanma
+- soru sorma (kim takip ediyor, nasıl vs.)
+- @ ile başlatma
+- büyük harf kullanma çok
 
-MUTLAKA YAP:
+YAP:
 - {length_config['min']}-{length_config['max']} karakter
-- {project['mention']} mention et ama başta değil
-- samimi türkçe konuş (ya, şey, bence, sanki, gibi)
-- arkadaşına konuşur gibi ol
+- {project['mention']} mention et 
+- bilgi ver, görüş paylaş
+- küçük harf, samimi ton
+- ara sıra spekülasyon
 
-SADECE TWEET YAZ!"""},
+sadece tweet yaz!"""},
             {"role": "user", "content": prompt}
         ],
         "max_tokens": 400,
@@ -406,14 +407,14 @@ def retry_chatgpt(project_key, length_config, attempt):
     
     print(f"🔄 ChatGPT tekrar deneniyor... (deneme {attempt}/3)")
     
-    # SAMİMİ RETRY PROMPT
-    simple_prompt = f"""HASHTAG YOK! @ ile başlatma!
+    # SORU SORMA RETRY
+    simple_prompt = f"""soru sorma! bilgi ver!
 
 {projects[project_key]['mention']} hakkında {length_config['min']}-{length_config['max']} karakter tweet yaz.
 
-ÖRNEK: "ya şu {projects[project_key]['mention']} nasıl bence? potansiyeli var gibi geliyor"
+ÖRNEK: "ya {projects[project_key]['mention']} baya solid proje. potansiyeli var bence"
 
-arkadaşına konuşur gibi samimi ol!"""
+küçük harf, samimi ol!"""
     
     headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
     data = {
