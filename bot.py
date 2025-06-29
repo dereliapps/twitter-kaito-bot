@@ -117,9 +117,13 @@ TWEET_LENGTHS = {
     "long": {"weight": 25, "min": 1000, "max": 1500, "style": "analysis"}   # %25 - Uzun analiz
 }
 
-# Rate limiting için son tweet zamanı
+# Tweet sistemi - günde 5 tweet sabah 10 akşam 10 arası
 last_tweet_time = None
-MINIMUM_INTERVAL = 15 * 60  # 15 dakika (saniye)
+MINIMUM_INTERVAL = 2.5 * 60 * 60  # 2.5 saat (saniye) - günde 5 tweet
+DAILY_TWEET_COUNT = 5
+TWEET_START_HOUR = 10  # sabah 10
+TWEET_END_HOUR = 22    # akşam 10
+current_project_index = 0  # Proje rotasyonu için
 
 def create_oauth_signature(method, url, params, consumer_secret, token_secret):
     """OAuth 1.0a signature oluştur"""
@@ -513,7 +517,7 @@ def send_tweet(content):
         time_since_last = current_time - last_tweet_time
         if time_since_last < MINIMUM_INTERVAL:
             wait_time = MINIMUM_INTERVAL - time_since_last
-            print(f"⏳ Rate limiting: {wait_time/60:.1f} dakika beklemek gerekiyor...")
+            print(f"⏳ Rate limiting: {wait_time/60:.1f} dakika beklemek gerekiyor (2.5 saat kural)...")
             return False
     
     url = "https://api.twitter.com/2/tweets"
@@ -533,7 +537,7 @@ def send_tweet(content):
         print(f"📊 Uzunluk: {len(content)} karakter")
         return True
     elif response.status_code == 429:
-        print(f"⚠️ Twitter API rate limit! 15 dakika bekliyorum...")
+        print(f"⚠️ Twitter API rate limit! 2.5 saat bekliyorum...")
         print("🔄 Bot otomatik olarak bekleyecek ve daha sonra dener")
         return False
     else:
@@ -543,8 +547,13 @@ def send_tweet(content):
 def create_enhanced_tweet():
     """Enhanced tweet oluştur ve gönder"""
     try:
-        # Rastgele proje seç
-        project_key = random.choice(list(projects.keys()))
+        # Proje rotasyonu - sırayla her projeden
+        global current_project_index
+        project_keys = list(projects.keys())
+        project_key = project_keys[current_project_index % len(project_keys)]
+        current_project_index += 1
+        
+        print(f"🔄 Proje rotasyonu: {current_project_index}/{len(project_keys)} - Seçilen: {project_key}")
         
         # Sentiment analizi yap
         sentiment_data = search_twitter_sentiment(project_key)
@@ -578,15 +587,23 @@ def create_enhanced_tweet():
 
 def auto_tweet():
     """Otomatik tweet fonksiyonu"""
-    print(f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Otomatik tweet başlatılıyor...")
+    current_time = datetime.now()
+    current_hour = current_time.hour
     
-    # Rate limiting kontrolü
+    print(f"⏰ {current_time.strftime('%Y-%m-%d %H:%M:%S')} - Otomatik tweet başlatılıyor...")
+    
+    # Saat kontrolü - sadece 10:00-22:00 arası
+    if current_hour < TWEET_START_HOUR or current_hour >= TWEET_END_HOUR:
+        print(f"🌙 Gece saati ({current_hour}:00) - Tweet atılmıyor (sadece {TWEET_START_HOUR}:00-{TWEET_END_HOUR}:00)")
+        return False
+    
+    # Rate limiting kontrolü - 2.5 saat
     global last_tweet_time
     if last_tweet_time:
         time_since_last = time.time() - last_tweet_time
         if time_since_last < MINIMUM_INTERVAL:
             wait_time = MINIMUM_INTERVAL - time_since_last
-            print(f"⏳ Rate limiting aktif: {wait_time/60:.1f} dakika daha beklemeli")
+            print(f"⏳ Rate limiting aktif: {wait_time/60:.1f} dakika daha beklemeli (2.5 saat kural)")
             return False
     
     success = create_enhanced_tweet()
@@ -611,22 +628,18 @@ def auto_bot():
     else:
         print("✅ Tüm API'ler çalışıyor!")
     
-    # İlk tweet'i hemen at
-    print("🚀 İlk tweet atılıyor...")
-    auto_tweet()
+    # İlk tweet'i hemen atma, schedule'a bırak
+    print("⏰ İlk tweet schedule'da bekliyor (rate limiting güvenliği için)")
     
-    # Schedule ayarla: Her 2-4 saatte bir rastgele (rate limiting ile)
-    def safe_auto_tweet():
-        if random.randint(1, 100) <= 30:
-            print("🎲 Şans tuttu! Tweet deneniyor...")
-            return auto_tweet()
-        else:
-            print("🎲 Bu sefer pas geçiliyor...")
-            return False
+    # Schedule ayarla: Her saat kontrol et, 2.5 saat kuralına uy
+    def scheduled_tweet():
+        print("📅 Schedule kontrolü - tweet deneniyor...")
+        return auto_tweet()
     
-    schedule.every().hour.do(safe_auto_tweet)
+    # Her 30 dakikada kontrol et (ama auto_tweet kendi saat ve interval kontrolü yapacak)
+    schedule.every(30).minutes.do(scheduled_tweet)
     
-    print("⏰ Bot schedule'ı ayarlandı: Her saat %30 ihtimalle tweet (rate limiting korumalı)")
+    print("⏰ Bot schedule'ı ayarlandı: Her 30dk kontrol, 2.5 saat aralıkla 5 tweet/gün (10:00-22:00)")
     print("🔄 Bot çalışmaya başladı! Ctrl+C ile durdurun.")
     
     # Sonsuz döngü
