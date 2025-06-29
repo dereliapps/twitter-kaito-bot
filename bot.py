@@ -283,25 +283,25 @@ def get_enhanced_ai_tweet(project_key, sentiment_data, target_length):
     project = projects[project_key]
     length_config = target_length
     
-    # Etkili ChatGPT prompts
+    # SAMİMİ PROMPT'LAR - @ İLE BAŞLATMA!
     style_prompts = {
-        "punch": f"""{project['mention']} hakkında çok kısa tweet yaz.
+        "punch": f"""HASHTAG YOK! @ ile başlatma! {project['mention']} hakkında {length_config['min']}-{length_config['max']} karakter tweet yaz.
 
-Örnek stil: "kim takip ediyor @mitosisorg'u? tge yaklaşıyor sanki. kaçırmayın"
+ÖRNEK: "ya şu {project['mention']} projesini kim takip ediyor? bence fena değil gibi"
 
-{length_config['min']}-{length_config['max']} karakter arasında yaz.""",
+arkadaşına konuşur gibi samimi ol!""",
         
-        "normal": f"""{project['mention']} hakkında normal uzunlukta tweet yaz.
+        "normal": f"""HASHTAG YOK! @ ile başlatma! {project['mention']} hakkında {length_config['min']}-{length_config['max']} karakter tweet yaz.
 
-Örnek stil: "bence @anoma farklı bir yerde duruyor. mahremiyet alanında çok ciddi çalışıyorlar. henüz mainstream olmamış ama potansiyeli var"
+ÖRNEK: "bence şu {project['mention']} farklı bir yerde duruyor ya. {project['focus']} alanında çalışıyorlar sanki. henüz mainstream olmamış ama potansiyeli var gibi geliyor"
 
-{length_config['min']}-{length_config['max']} karakter arasında yaz.""",
+arkadaşına konuşur gibi samimi ol!""",
         
-        "analysis": f"""{project['mention']} hakkında uzun analiz tweet'i yaz.
+        "analysis": f"""HASHTAG YOK! @ ile başlatma! {project['mention']} hakkında {length_config['min']}-{length_config['max']} karakter uzun analiz yaz.
 
-Örnek stil: "kim analiz ediyor @virtuals_io son durumunu? AI token sektöründe çok hızlı büyüyor. 2024'te AI ajanlar mainstream olacak gibi gözüküyor. erken girenlerin şansı var bence"
+ÖRNEK: "şu {project['mention']} son durumunu kim analiz ediyor ya? {project['focus']} sektöründe çok hızlı büyüyor sanki. erken girenlerin şansı var bence. bu projeyi takip etmek lazım gibi geliyor"
 
-{length_config['min']}-{length_config['max']} karakter arasında yaz."""
+arkadaşına konuşur gibi samimi ol!"""
     }
     
     prompt = style_prompts[length_config['style']]
@@ -312,16 +312,21 @@ def get_enhanced_ai_tweet(project_key, sentiment_data, target_length):
     data = {
         "model": "gpt-4o-mini",
         "messages": [
-            {"role": "system", "content": f"""sen crypto piyasasını takip eden türk birisisin. çok doğal türkçe konuş.
+            {"role": "system", "content": f"""sen arkadaşın gibi konuşan bir türksün. crypto ile ilgileniyorsun.
 
-SADECE tweet yaz, başka hiçbir şey yazma.
+KESINLIKLE YAPMA:
+- HASHTAG KULLANMA (#bitcoin, #crypto vs. HİÇBİRİNİ)
+- TWEET'İ @ İLE BAŞLATMA (mention ortada olsun)
+- UZUN ÇİZGİ KULLANMA (-, —, –)
+- FORMAL DİL
 
-Kurallar:
+MUTLAKA YAP:
 - {length_config['min']}-{length_config['max']} karakter
-- {project['mention']} mention et
-- uzun çizgi (-) kullanma hiç
-- gerçek insan gibi casual konuş
-- tek tweet, thread değil"""},
+- {project['mention']} mention et ama başta değil
+- samimi türkçe konuş (ya, şey, bence, sanki, gibi)
+- arkadaşına konuşur gibi ol
+
+SADECE TWEET YAZ!"""},
             {"role": "user", "content": prompt}
         ],
         "max_tokens": 400,
@@ -344,10 +349,29 @@ Kurallar:
             
             print(f"✅ ChatGPT Tweet: {tweet}")
             
-            # Uzun çizgi kontrolü ve temizlik
+            # HASHTAG VE UZUN ÇİZGİ TEMİZLİK
             tweet = tweet.replace('—', ' ')
             tweet = tweet.replace('–', ' ')
             tweet = tweet.replace('-', ' ')
+            
+            # Hashtag'leri temizle
+            import re
+            tweet = re.sub(r'#\w+', '', tweet)  # #bitcoin, #crypto vs. sil
+            tweet = re.sub(r'\s+', ' ', tweet)  # Çoklu boşlukları tek yap
+            tweet = tweet.strip()  # Baştan sondaki boşlukları sil
+            
+            # @ ile başlarsa düzelt (ana timeline'da gözükmez yoksa)
+            if tweet.startswith('@'):
+                # @mention'ı bul ve tweet'i yeniden düzenle
+                parts = tweet.split(' ', 1)
+                if len(parts) > 1:
+                    mention = parts[0]
+                    rest = parts[1]
+                    # Mention'ı ortaya koy
+                    tweet = f"şu {mention} nasıl bence? {rest}"
+                    print(f"🔧 @ ile başlıyordu, düzeltildi: {tweet}")
+            
+            print(f"🧹 Temizlenmiş tweet: {tweet}")
             
             # Uzunluk kontrolü - eğer uygun değilse kısalt veya uzat
             if len(tweet) > length_config['max']:
@@ -382,10 +406,14 @@ def retry_chatgpt(project_key, length_config, attempt):
     
     print(f"🔄 ChatGPT tekrar deneniyor... (deneme {attempt}/3)")
     
-    # Daha basit prompt ile tekrar dene
-    simple_prompt = f"""{projects[project_key]['mention']} hakkında {length_config['min']}-{length_config['max']} karakter tweet yaz.
+    # SAMİMİ RETRY PROMPT
+    simple_prompt = f"""HASHTAG YOK! @ ile başlatma!
 
-Örnek: "kim takip ediyor @anoma'yı? mahremiyet alanında çalışıyor, potansiyeli var bence" """
+{projects[project_key]['mention']} hakkında {length_config['min']}-{length_config['max']} karakter tweet yaz.
+
+ÖRNEK: "ya şu {projects[project_key]['mention']} nasıl bence? potansiyeli var gibi geliyor"
+
+arkadaşına konuşur gibi samimi ol!"""
     
     headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
     data = {
@@ -405,8 +433,24 @@ def retry_chatgpt(project_key, length_config, attempt):
         if response.status_code == 200:
             result = response.json()
             tweet = result['choices'][0]['message']['content'].strip()
+            
+            # RETRY TEMİZLİK
             tweet = tweet.replace('—', ' ').replace('–', ' ').replace('-', ' ')
-            print(f"✅ Retry başarılı: {tweet}")
+            import re
+            tweet = re.sub(r'#\w+', '', tweet)  # Hashtag'leri sil
+            tweet = re.sub(r'\s+', ' ', tweet)  # Çoklu boşlukları tek yap
+            tweet = tweet.strip()
+            
+            # @ ile başlarsa düzelt
+            if tweet.startswith('@'):
+                parts = tweet.split(' ', 1)
+                if len(parts) > 1:
+                    mention = parts[0]
+                    rest = parts[1]
+                    tweet = f"şu {mention} nasıl bence? {rest}"
+                    print(f"🔧 Retry: @ ile başlıyordu, düzeltildi: {tweet}")
+            
+            print(f"✅ Retry başarılı (temizlenmiş): {tweet}")
             return tweet
         else:
             print(f"❌ Retry hatası: {response.status_code} - {response.text}")
