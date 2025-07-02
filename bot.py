@@ -91,7 +91,7 @@ projects = {
         "key_innovation": "zk-SNARKs entegreli privacy özellikleri"
     },
     "camp_network": {
-        "mention": "@campnetworkxyz", 
+        "mention": "@campnetwork", 
         "focus": "modüler blockchain yaklaşımı", 
         "specialty": "özelleştirilebilir execution layer ile öne çıkan modüler mimari",
         "trends": ["modüler blockchain çözümleri", "özelleştirilebilir execution layer", "validator ağı büyümesi", "developer tooling"],
@@ -107,18 +107,18 @@ projects = {
     },
     "virtuals": {
         "mention": "@virtuals_io", 
-        "focus": "yaşayan NFT konsepti", 
-        "specialty": "dijital varlıkların evrimleşebilme özelliğiyle yeni paradigma",
-        "trends": ["AI ajan tokenları ilgi görüyor", "yapay zeka tokenlaştırması", "GameFi AI entegrasyonları", "dinamik NFT'ler"],
+        "focus": "AI agent pazarı", 
+        "specialty": "yapay zeka ajanları tokenlaştırıp ekonomi oluşturan platform",
+        "trends": ["AI ajan tokenları ilgi görüyor", "yapay zeka tokenlaştırması", "GameFi AI entegrasyonları", "AI agent pazarı büyüyor"],
         "price_action": "AI token sektöründe performans gösteriyor",
-        "ecosystem": "Oyun ve metaverse ekonomileri",
-        "personality": "AI ve oyun odaklı",
+        "ecosystem": "AI agent ekonomisi ve pazaryeri",
+        "personality": "AI ve tokenizasyon odaklı",
         "token_status": "active",
-        "tech_detail": "Yaşayan NFT konsepti: Oyun içi performansa göre görünüm değiştirebiliyor, sahibi tarafından özelleştirilebiliyor, farklı platformlarda tutarlı kimlik koruyor. Alpha sürümde 1200+ dinamik NFT mint'lendi.",
-        "development_update": "Önümüzdeki çeyrekte Unreal Engine entegrasyonu planlanıyor",
-        "performance_data": "1200+ dinamik NFT mint'lendi",
-        "development_stage": "aktif proje (alpha sürümde kullanılabilir)",
-        "key_innovation": "Platformlar arası tutarlı kimlik sistemi"
+        "tech_detail": "AI agent pazarı: Farklı yeteneklerdeki yapay zeka ajanları tokenlaştırılıp pazarda işlem görüyor. Agent'lar sahipleri adına otomatik görevler yapıyor, kazandıkları gelir token ekonomisinde paylaşılıyor. Her agent'ın kendine özgü becerileri ve performans geçmişi var.",
+        "development_update": "Yeni AI agent kategorileri ve daha fazla platform entegrasyonu geliyor",
+        "performance_data": "1000+ aktif AI agent token'ı piyasada",
+        "development_stage": "aktif proje (marketplace canlıda)",
+        "key_innovation": "AI agent tokenizasyonu ve otomatik gelir paylaşımı"
     },
     "somnia": {
         "mention": "@somnia_network", 
@@ -161,45 +161,81 @@ projects = {
         "governance_update": "Ekosistem fonlarının %15'i developer ödüllerine ayrıldı",
         "development_stage": "beta aşamasında (TVL büyüyor)",
         "key_innovation": "Dinamik arbitraj botları ve slippage optimizasyonu"
+    },
+    "pharos": {
+        "mention": "@pharosnetwork",
+        "focus": "Layer-1 blockchain altyapısı",
+        "specialty": "EVM uyumlu hızlı blockchain ile DeFi ve RWA odaklı ekosistem",
+        "trends": ["Layer-1 rekabeti artıyor", "EVM uyumluluk standart", "RWA tokenization büyüyor", "airdrop programları"],
+        "price_action": "testnet canlı, airdrop programı aktif",
+        "ecosystem": "DeFi, RWA ve DePIN uygulamaları",
+        "personality": "performans ve RWA odaklı",
+        "token_status": "pre_token",
+        "tech_detail": "EVM uyumlu Layer-1 blockchain: 1 saniye finality süresi, düşük depolama maliyetleri, AsyncBFT consensus algoritması. Ethereum geliştiricileri mevcut araçlarını kullanabilirken yüksek performans ve güvenlik sağlıyor.",
+        "development_update": "Testnet incentive programı devam ediyor",
+        "performance_data": "1 saniye finality süresi",
+        "development_stage": "testnet aşamasında (airdrop aktif)",
+        "key_innovation": "AsyncBFT consensus ve unified account sistemi"
+    },
+    "zama": {
+        "mention": "@zama_fhe",
+        "focus": "Fully Homomorphic Encryption (FHE)",
+        "specialty": "blockchain üzerinde tam gizlilik sağlayan FHE teknolojisi",
+        "trends": ["privacy teknolojileri öne çıkıyor", "FHE adoption artıyor", "confidential smart contracts", "private DeFi"],
+        "price_action": "teknoloji geliştirme aşamasında, yatırımcı ilgisi yüksek",
+        "ecosystem": "Privacy-focused blockchain protokolü",
+        "personality": "gizlilik ve kripto odaklı",
+        "token_status": "pre_token",
+        "tech_detail": "Fully Homomorphic Encryption: Verileri decrypt etmeden işleme olanak sağlar. fhEVM ile Solidity'de private smart contract yazılabiliyor. Encrypted state updates, threshold FHE ile validator güvenliği.",
+        "development_update": "fhEVM v0.7 testnet canlı",
+        "performance_data": "~5 TPS şu an, FHE ASIC'ler ile 1000+ TPS hedef",
+        "development_stage": "testnet aşamasında (confidential blockchain protocol)",
+        "key_innovation": "FHE ile tam gizli smart contract'lar"
     }
 }
 
-# Tweet uzunluk kategorileri - DAHA KISA
+# Tweet uzunluk kategorileri - THREAD DESTEĞİ İLE
 TWEET_LENGTHS = {
-    "short": {"weight": 40, "min": 200, "max": 350, "style": "punch"},    # %40 - Kısa & Punch
-    "medium": {"weight": 50, "min": 350, "max": 500, "style": "normal"},  # %50 - Normal 
-    "long": {"weight": 10, "min": 500, "max": 650, "style": "analysis"}   # %10 - Uzun analiz
+    "short": {"weight": 35, "min": 200, "max": 350, "style": "punch"},      # %35 - Kısa & Punch
+    "medium": {"weight": 45, "min": 350, "max": 500, "style": "normal"},    # %45 - Normal 
+    "long": {"weight": 15, "min": 500, "max": 650, "style": "analysis"},    # %15 - Uzun analiz
+    "thread": {"weight": 5, "min": 2000, "max": 3000, "style": "thread"}    # %5 - Thread (2-3k karakter)
 }
 
 # TWEET TİPLERİ - DOĞAL VE ÇEŞİTLİ İNSAN GİBİ
 TWEET_TYPES = {
     "tech_deep": {
-        "weight": 25,
+        "weight": 20,
         "style": "Teknoloji odaklı derinlemesine açıklama",
         "tone": "Teknik ama anlaşılır, bilgi paylaşan"
     },
     "casual_discovery": {
-        "weight": 20,
+        "weight": 18,
         "style": "Rastgele keşfetmiş gibi doğal",
         "tone": "Meraklı, keşfeden, samimi"
     },
-    "market_perspective": {
+    "daily_metaphor": {
         "weight": 15,
+        "style": "Günlük hayat metaforlarıyla teknik açıklama",
+        "tone": "Eğlenceli ama öğretici, Türk kültürü referansları"
+    },
+    "market_perspective": {
+        "weight": 12,
         "style": "Piyasa analizi ve görüş",
         "tone": "Analitik ama kişisel görüş"
     },
     "comparison": {
-        "weight": 15,
+        "weight": 12,
         "style": "Başka projelerle karşılaştırma", 
         "tone": "Karşılaştırmalı, objektif"
     },
     "quote_commentary": {
-        "weight": 15,
+        "weight": 12,
         "style": "Proje tweet'ine yorum yapma",
         "tone": "Yorumlayıcı, kişisel görüş ekleyen"
     },
     "crypto_meme": {
-        "weight": 10,
+        "weight": 8,
         "style": "Eğlenceli meme tarzı",
         "tone": "Mizahi ama bilgili, crypto insider"
     },
@@ -209,21 +245,21 @@ TWEET_TYPES = {
         "tone": "Deneyim odaklı, samimi"
     },
     "question_wonder": {
-        "weight": 7,
+        "weight": 6,
         "style": "Merak ve soru sorma",
         "tone": "Meraklı, düşündürücü"
     },
     "future_prediction": {
-        "weight": 5,
+        "weight": 4,
         "style": "Gelecek tahmini",
         "tone": "Spekülatif ama mantıklı"
     }
 }
 
-# Tweet sistemi - günde 5 tweet sabah 8 gece yarısı arası (Avrupa saati)
+# Tweet sistemi - günde 9 tweet sabah 8 gece yarısı arası (Avrupa saati)
 last_tweet_time = None
-MINIMUM_INTERVAL = 2.5 * 60 * 60  # 2.5 saat (saniye) - günde 5 tweet
-DAILY_TWEET_COUNT = 5
+MINIMUM_INTERVAL = 1.8 * 60 * 60  # 1.8 saat (saniye) - günde 9 tweet (16 saat ÷ 9 = 1.8 saat)
+DAILY_TWEET_COUNT = 9
 TWEET_START_HOUR = 8   # sabah 8 (Avrupa saati)
 TWEET_END_HOUR = 24    # gece yarısı (00:00)
 current_project_index = 0  # Proje rotasyonu için
@@ -459,14 +495,16 @@ def get_time_based_tone():
         }
 
 def choose_tweet_length():
-    """Ağırlıklı rastgele tweet uzunluğu seç"""
+    """Ağırlıklı rastgele tweet uzunluğu seç - thread desteği ile"""
     rand = random.randint(1, 100)
-    if rand <= 25:
+    if rand <= 35:
         return TWEET_LENGTHS["short"]
-    elif rand <= 75:
+    elif rand <= 80:  # 35 + 45
         return TWEET_LENGTHS["medium"] 
-    else:
+    elif rand <= 95:  # 35 + 45 + 15
         return TWEET_LENGTHS["long"]
+    else:  # 5% - Thread
+        return TWEET_LENGTHS["thread"]
 
 def choose_tweet_type():
     """Ağırlıklı rastgele tweet tipi seç - doğal çeşitlilik için"""
@@ -516,31 +554,45 @@ def get_enhanced_ai_tweet(project_key, sentiment_data, target_length, tweet_type
     clean_project_name = project['mention'].replace('@', '').replace('_', ' ').title()
     
     type_prompts = {
-        "tech_deep": f"""{clean_project_name} hakkında {length_config['min']}-{length_config['max']} karakter tweet at. Crypto insanı gibi konuş.
+        "tech_deep": f"""{clean_project_name} hakkında {"uzun makale tarzı" if length_config['style'] == 'thread' else f"{length_config['min']}-{length_config['max']} karakter"} tweet at. Crypto insanı gibi konuş.
 
 PROJE: {project['focus']} - {project['specialty']}
 TEKNİK: {project.get('tech_detail', '')}
 İNOVASYON: {project.get('key_innovation', '')}
+DURUM: {project.get('development_stage', project['price_action'])}
+
+{"UZUN MAKALE MODU (2000-3000 karakter):" if length_config['style'] == 'thread' else ""}
 
 ZAMAN TONU: {time_tone['modifier']}
 
 YAPMA BUNLARI:
 - "ekosistem için önemli", "göz önünde bulundurulmalı" gibi AI dili
 - "derinlemesine analiz", "profesyonel yaklaşım" gibi buzzword'ler  
-- Çok uzun cümleler
+{"- Çok teknik jargon, ama detaylı açıklama yap" if length_config['style'] == 'thread' else "- Çok uzun cümleler"}
 
 YAP BUNLARI:
-- "lan bu teknoloji bayağı cool", "gerçekten işe yarayabilir"
+- "lan bu teknoloji bayağı cool", "gerçekten işe yarayabilir"  
 - "henüz erken ama potansiyeli var", "şu kısmı çok zekice yapılmış"
 - Samimi, arkadaşça ton - sanki bir arkadaşına anlatıyorsun
-- Kısa, net cümleler
+{f"- Makale gibi yapılandır: Giriş-Teknik detay-Kullanım alanları-Sonuç" if length_config['style'] == 'thread' else "- Kısa, net cümleler"}
+{f"- Her paragraf ayrı bir konuya odaklan" if length_config['style'] == 'thread' else ""}
 
 TON: {time_tone['tone']} + teknik bilgili crypto insanı
 
-ÖRNEKLER:
+{"UZUN MAKALE YAPISI (ÖRNEK):" if length_config['style'] == 'thread' else "ÖRNEKLER:"}
+{f'''
+Giriş paragrafı - Projeyi tanıt ve neden ilginç olduğunu açıkla
+
+Teknik paragraf - Teknolojinin nasıl çalıştığını samimi dille anlat  
+
+Kullanım paragrafı - Gerçek hayatta nerelerde kullanılacağını söyle
+
+Karşılaştırma paragrafı - Diğer projelerle kıyasla
+
+Sonuç paragrafı - Gelecek ve potansiyel hakkında düşünceler''' if length_config['style'] == 'thread' else '''
 "X projesinin şu özelliği gerçekten akıllıca. Böyle yaklaşımları seviyorum..."
 "Araştırırken fark ettim, X'in teknolojisi diğerlerinden farklı..."
-"X'in yaklaşımı ilginç. Şu sorunu çözmesi hoşuma gitti..."
+"X'in yaklaşımı ilginç. Şu sorunu çözmesi hoşuma gitti..."'''}
 
 Sadece tweet yaz, açıklama yapma.""",
 
@@ -614,6 +666,58 @@ TON: Objektif ama meraklı karşılaştırma yapan biri
 "Diğer projeler genelde şöyle yaparken X..."
 
 Sadece tweet yaz.""",
+
+        "daily_metaphor": f"""{clean_project_name} hakkında {"uzun makale tarzı" if length_config['style'] == 'thread' else f"{length_config['min']}-{length_config['max']} karakter"} tweet at. Günlük hayat metaforlarıyla teknik konuları açıkla.
+
+PROJE: {project['focus']} - {project['specialty']}
+TEKNİK: {project.get('tech_detail', '')}
+İNOVASYON: {project.get('key_innovation', '')}
+
+{"UZUN MAKALE MODU - Günlük hayat metaforlarıyla detaylı açıklama:" if length_config['style'] == 'thread' else ""}
+
+STIL: Verdiğim örneklerdeki gibi günlük hayat metaforları kullan
+
+ÖRNEK STİL (AYNEN BÖYLE YAP):
+1. "Anoma, "intent" (niyet) odaklı yapısıyla geleneksel zincir üstü işlem modelini değiştiriyor. Kullanıcılar ne yapmak istediklerini tanımlar, nasıl yapılacağı çözücülere bırakılır..."
+
+2. "Anoma'da olay şöyle: "Evlenmek istiyorum" diye intent atıyorsun. Düğün salonu, takıcı, nikâh memuru... bunları sen ayarlamıyorsun. Çözücüler devreye giriyor, uygun adayla eşleşiyorsun, evlilik tek işlemde onchain oluyor 😄 Ne düğün masrafı, ne kaynana baskısı!"
+
+YAPMA:
+- Sıradan teknik açıklama
+- Çok ciddi ton  
+- Yabancı referanslar
+
+YAP BUNLARI:
+- Türk günlük hayatından metaforlar (evlilik, aile, akrabalar, komşular, çarşı-pazar)
+- Türk kültürü referansları (TV programları, gelenekler, durumlar)
+- Eğlenceli ama öğretici açıklamalar
+- "şöyle:" "olay şu:" gibi samimi başlangıçlar
+- Emoji kullan (😄 gibi)
+{f"- Her paragrafta farklı günlük hayat metaforu kullan" if length_config['style'] == 'thread' else ""}
+{f"- Uzun hikaye gibi anlat, karakterler oluştur" if length_config['style'] == 'thread' else ""}
+
+TON: Eğlenceli öğretmen, karmaşık şeyleri basit metaforlarla anlatan
+
+TÜRK KÜLTÜRÜ REFERANSLARİ:
+- "Kısmetse Olur", "Gelin Evi", "Kim Milyoner Olmak İster"  
+- "kaynana", "enişte", "baldız", "görümce"
+- "muhtarlık", "kahvehane", "bakkal", "esnaf"
+- "bayram", "düğün", "nişan", "kına gecesi"
+
+GÜNLÜK HAYAT METAFORLARİ:
+- Evlilik işlemleri (nişan, düğün, nikah)
+- Aile ilişkileri (kaynana-gelin, enişte-baldız)
+- Alışveriş (pazarlık, bargain)
+- Komşuluk (dedikodu, yardımlaşma)
+
+{f'''UZUN MAKALE YAPISI (Metaforlarla):
+Giriş - Projeyi tanıdık bir durum/kişiyle karşılaştır
+Teknik kısım - Karmaşık teknolojiyikomşu-akraba ilişkileriyle açıkla  
+Avantajlar - "Ne kazanıyoruz" sorusunu günlük hayat örnekleriyle
+Rakipler - Diğer çözümlerle kıyaslama (başka ev/dükkanlarlayarışır gibi)
+Sonuç - Gelecekle ilgili eğlenceli tahmin''' if length_config['style'] == 'thread' else ""}
+
+Sadece tweet yaz, böyle eğlenceli metaforlarla açıkla!""",
 
         "quote_commentary": f"""ÖZEL: Bu tweet quote tweet olacak. {clean_project_name} projesinin resmi hesabından bir tweet'e yorum yapıyormuş gibi {length_config['min']}-{length_config['max']} karakter tweet yaz.
 
@@ -774,29 +878,45 @@ Tweet yaz."""
     # ChatGPT API call
     headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
     
-    data = {
-        "model": "gpt-4o-mini",
-        "messages": [
-            {"role": "system", "content": f"""Sen crypto takip eden samimi bir insansın. Twitter'da doğal konuşursun.
+    # Uzun tweet'ler için daha fazla token
+    max_tokens_value = 1500 if length_config['style'] == 'thread' else 500
+    
+    system_prompt = f"""Sen crypto takip eden samimi bir insansın. Twitter'da doğal konuşursun.
 
 KURAL:
 - {length_config['min']}-{length_config['max']} karakter tweet yaz
 - {clean_project_name} ismini doğal şekilde kullan
 - @ işareti, hashtag kullanma
-- "profesyonel analiz", "derinlemesine inceleme" gibi AI dili kullanma
 - Samimi, arkadaşça konuş - sanki bir arkadaşına anlatıyorsun
 
-İSTEDİĞİM TON: Crypto meraklısı, gerçek insan, abartısız
+İSTEDİĞİM TON: Crypto meraklısı, gerçek insan, abartısız"""
+
+    if length_config['style'] == 'thread':
+        system_prompt += f"""
+
+ÖZEL: Bu uzun makale tarzı tweet (2000-3000 karakter)
+- Detaylı analiz yap, birden fazla paragraf kullan
+- Teknik konuları derinlemesine açıkla
+- Twitter Blue uzun tweet formatında
+- Makale gibi yapılandır ama samimi tondan çıkma
+- Giriş-gelişme-sonuç yapısı kullan"""
+    else:
+        system_prompt += f"""
 
 ÖRNEK İYİ CÜMLELER:
 "X'in şu özelliği bayağı mantıklı geldi"
-"henüz erken ama ilginç bir yaklaşım"
+"henüz erken ama ilginç bir yaklaşım"  
 "bu alanda böyle çözümler görmeye alıştık ama X farklı"
 
-Sadece tweet yaz."""},
+Sadece tweet yaz."""
+
+    data = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ],
-        "max_tokens": 500,
+        "max_tokens": max_tokens_value,
         "temperature": 1.1
     }
     
@@ -1409,7 +1529,7 @@ def generate_auto_reply(mention_text, username):
     """Mention'a otomatik yanıt oluştur"""
     try:
         # Basit yanıt kuralları
-        crypto_keywords = ['anoma', 'mitosis', 'union', 'virtuals', 'camp', 'somnia', 'crypto', 'blockchain', 'defi']
+        crypto_keywords = ['anoma', 'mitosis', 'union', 'virtuals', 'camp', 'somnia', 'pharos', 'zama', 'crypto', 'blockchain', 'defi']
         
         # Crypto ile ilgili mi kontrol et
         if any(keyword in mention_text for keyword in crypto_keywords):
@@ -1604,8 +1724,12 @@ def create_enhanced_tweet_v2():
         print(f"🎯 Seçilen proje: {projects[selected_project]['mention']} - {projects[selected_project]['focus']}")
         print(f"🎭 Tweet tipi: {selected_type} - {type_config['style']}")
         
-        # Haber sistemi kaldırıldı - direkt normal tweet modu
+        # Direkt uzun tweet modu - Twitter Blue ile 4000 karaktere kadar
         length_config = choose_tweet_length()
+        
+        if length_config['style'] == 'thread':
+            print("📝 Uzun makale tweet modu - Twitter Blue ile direkt uzun tweet...")
+        
         tweet_content = get_enhanced_ai_tweet(selected_project, sentiment_data, length_config, selected_type, type_config)
         
         if tweet_content is None:
