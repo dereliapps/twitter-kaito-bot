@@ -45,34 +45,51 @@ access_token = os.getenv('TWITTER_ACCESS_TOKEN')
 access_secret = os.getenv('TWITTER_ACCESS_SECRET')
 bearer_token = os.getenv('TWITTER_BEARER_TOKEN')
 openai_key = os.getenv('OPENAI_API_KEY')
+gemini_key = os.getenv('GEMINI_API_KEY') or "AIzaSyBKUhepHbuVBiaYzkQkZEvnbfEO5MJEgJM"
 
 # API key kontrolü
 print(f"🔍 API Key Kontrolü:")
 print(f"   Twitter API Key: {'✅' if api_key else '❌'} {f'({api_key[:10]}...)' if api_key else ''}")
 print(f"   OpenAI Key: {'✅' if openai_key else '❌'} (uzunluk: {len(openai_key) if openai_key else 0})")
+print(f"   Gemini Key: {'✅' if gemini_key else '❌'} (uzunluk: {len(gemini_key) if gemini_key else 0})")
 if openai_key:
     print(f"   OpenAI Key başı: {openai_key[:20]}...")
     print(f"   OpenAI Key sonu: ...{openai_key[-10:]}")
+if gemini_key:
+    print(f"   Gemini Key başı: {gemini_key[:20]}...")
+    print(f"   Gemini Key sonu: ...{gemini_key[-10:]}")
 
 print(f"🌍 Environment Variables:")
-for key in ['TWITTER_API_KEY', 'TWITTER_API_SECRET', 'TWITTER_ACCESS_TOKEN', 'TWITTER_ACCESS_SECRET', 'OPENAI_API_KEY']:
+for key in ['TWITTER_API_KEY', 'TWITTER_API_SECRET', 'TWITTER_ACCESS_TOKEN', 'TWITTER_ACCESS_SECRET', 'OPENAI_API_KEY', 'GEMINI_API_KEY']:
     value = os.getenv(key)
     print(f"   {key}: {'✅ SET' if value else '❌ MISSING'}")
 
 # API KEY KONTROLÜ - Production için sadece environment variables
 import sys
-if not all([api_key, api_secret, access_token, access_secret, openai_key]):
-    print("❌ Gerekli environment variable'lar eksik!")
+if not all([api_key, api_secret, access_token, access_secret]):
+    print("❌ Gerekli Twitter API environment variable'ları eksik!")
     print("🔧 Lütfen şu environment variable'ları ayarlayın:")
     print("   - TWITTER_API_KEY")
     print("   - TWITTER_API_SECRET") 
     print("   - TWITTER_ACCESS_TOKEN")
     print("   - TWITTER_ACCESS_SECRET")
-    print("   - OPENAI_API_KEY")
     print("💡 Heroku'da: heroku config:set TWITTER_API_KEY=your_key")
     sys.exit(1)
 
-print("✅ Tüm API anahtarları environment variable'lardan yüklendi!")
+# AI API kontrolü - Gemini öncelikli, OpenAI fallback
+if not gemini_key and not openai_key:
+    print("❌ Hiçbir AI API key'i bulunamadı!")
+    print("🔧 En az birini ayarlayın:")
+    print("   - GEMINI_API_KEY (öncelikli)")
+    print("   - OPENAI_API_KEY (fallback)")
+    sys.exit(1)
+
+if gemini_key:
+    print("✅ Gemini API key bulundu! Primary AI olarak kullanılacak.")
+elif openai_key:
+    print("✅ OpenAI API key bulundu! Fallback AI olarak kullanılacak.")
+
+print("✅ Tüm API anahtarları yüklendi!")
 
 # Kaito projeleri - GERÇEKÇİ TÜRKÇE DATA
 projects = {
@@ -520,6 +537,182 @@ def choose_tweet_type():
     # Fallback
     return "casual_discovery", TWEET_TYPES["casual_discovery"]
 
+def clean_tweet(tweet, length_config, clean_project_name):
+    """Tweet temizleme fonksiyonu - hem Gemini hem OpenAI için"""
+    if not tweet:
+        return None
+        
+    # HASHTAG VE UZUN ÇİZGİ TEMİZLİK
+    tweet = tweet.replace('—', ' ')
+    tweet = tweet.replace('–', ' ')
+    tweet = tweet.replace('-', ' ')
+    
+    # Hashtag'leri temizle
+    import re
+    tweet = re.sub(r'#\w+', '', tweet)  # #bitcoin, #crypto vs. sil
+    tweet = re.sub(r'\s+', ' ', tweet)  # Çoklu boşlukları tek yap
+    tweet = tweet.strip()  # Baştan sondaki boşlukları sil
+    
+    # @ ile başlarsa düzelt (ana timeline'da gözükmez yoksa) + @ mention'ları temizle
+    if tweet.startswith('@'):
+        # @mention'ı bul ve tweet'i yeniden düzenle
+        parts = tweet.split(' ', 1)
+        if len(parts) > 1:
+            mention = parts[0]
+            rest = parts[1]
+            # @ mention'ını çıkar, proje ismini al
+            project_name = mention.replace('@', '').replace('_', ' ').title()
+            tweet = f"{project_name} {rest}"
+            print(f"🔧 @ ile başlıyordu, düzeltildi: {tweet}")
+    
+    # Tüm @ mention'larını proje ismiyle değiştir ve gereksiz kelimeleri temizle
+    import re
+    for project_key, project_data in projects.items():
+        mention = project_data['mention']
+        project_name = mention.replace('@', '').replace('_', ' ').title()
+        # @ mention ve temiz isim olmayan varyasyonları da değiştir
+        variations = [
+            mention,  # @campnetworkxyz
+            mention.replace('@', ''),  # campnetworkxyz
+            mention.replace('@', '').lower(),  # campnetworkxyz
+            mention.replace('@', '').capitalize(),  # Campnetworkxyz
+            mention.replace('@', '').upper()  # CAMPNETWORKXYZ
+        ]
+        for var in variations:
+            tweet = tweet.replace(var, project_name)
+    
+    # "şu, ya, nasıl bence" gibi gereksiz kelimeleri temizle
+    unwanted_phrases = [
+        "şu ", "ya ", "nasıl bence", "bence nasıl", 
+        "nasıl ya", "ya nasıl", "şu proje", "bu proje"
+    ]
+    for phrase in unwanted_phrases:
+        tweet = tweet.replace(phrase, "")
+    
+    # Çoklu boşlukları temizle ve düzelt
+    tweet = re.sub(r'\s+', ' ', tweet).strip()
+    
+    print(f"🧹 Temizlenmiş tweet: {tweet}")
+    
+    # Uzunluk kontrolü - eğer uygun değilse kısalt veya uzat
+    if len(tweet) > length_config['max']:
+        tweet = tweet[:length_config['max']-3] + "..."
+        print(f"✂️ Tweet kısaltıldı: {len(tweet)} karakter")
+    elif len(tweet) < length_config['min']:
+        tweet += " takip etmeye değer bence."
+        print(f"📏 Tweet uzatıldı: {len(tweet)} karakter")
+    
+    print(f"✅ AI tweet kullanılıyor!")
+    return tweet
+
+def call_gemini_api(prompt, length_config, clean_project_name):
+    """Gemini API call - 2.5 Pro model ile tweet oluştur (en güçlü reasoning + 2M context)"""
+    try:
+        # Sistem promptu ile user promptu birleştir
+        combined_prompt = f"""Sen crypto takip eden samimi bir insansın. Twitter'da doğal konuşursun.
+
+KURAL:
+- {length_config['min']}-{length_config['max']} karakter tweet yaz
+- {clean_project_name} ismini doğal şekilde kullan
+- @ işareti, hashtag kullanma
+- Samimi, arkadaşça konuş - sanki bir arkadaşına anlatıyorsun
+
+İSTEDİĞİM TON: Crypto meraklısı, gerçek insan, abartısız
+
+{prompt}
+
+Sadece tweet yaz, başka hiçbir şey ekleme."""
+
+        # Gemini API URL - 2.5 Pro model (en güçlü ve kaliteli)
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={gemini_key}"
+        
+        # Request data
+        data = {
+            "contents": [{
+                "parts": [{
+                    "text": combined_prompt
+                }]
+            }],
+            "generationConfig": {
+                "temperature": 1.1,
+                "topK": 40,
+                "topP": 0.95,
+                "maxOutputTokens": 8000 if length_config['style'] == 'thread' else 2000
+            }
+        }
+        
+        headers = {"Content-Type": "application/json"}
+        
+        print(f"🤖 Gemini 2.5 Pro API çağrısı yapılıyor...")
+        print(f"🔑 API Key: {gemini_key[:20]}...{gemini_key[-10:]}")
+        print(f"📝 Prompt uzunluğu: {len(combined_prompt)} karakter")
+        
+        response = requests.post(url, headers=headers, json=data)
+        
+        print(f"📡 Gemini Response Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            if 'candidates' in result and len(result['candidates']) > 0:
+                candidate = result['candidates'][0]
+                
+                # Response yapısını kontrol et
+                if 'content' in candidate and 'parts' in candidate['content']:
+                    tweet = candidate['content']['parts'][0]['text'].strip()
+                elif 'text' in candidate:
+                    tweet = candidate['text'].strip()
+                elif candidate.get('finishReason') == 'MAX_TOKENS':
+                    print("⚠️ Gemini Pro MAX_TOKENS limitine takıldı, Flash'a geçiliyor...")
+                    # Flash modele fallback yap
+                    url_flash = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
+                    flash_response = requests.post(url_flash, headers=headers, json=data)
+                    
+                    if flash_response.status_code == 200:
+                        flash_result = flash_response.json()
+                        if 'candidates' in flash_result and len(flash_result['candidates']) > 0:
+                            flash_candidate = flash_result['candidates'][0]
+                            if 'content' in flash_candidate and 'parts' in flash_candidate['content']:
+                                tweet = flash_candidate['content']['parts'][0]['text'].strip()
+                                print(f"✅ Flash fallback başarılı: {tweet[:50]}...")
+                            else:
+                                return None
+                        else:
+                            return None
+                    else:
+                        return None
+                else:
+                    print("❌ Beklenmedik Gemini Pro response yapısı")
+                    print(f"Candidate keys: {candidate.keys()}")
+                    print(f"FinishReason: {candidate.get('finishReason')}")
+                    return None
+                
+                print(f"✅ Gemini Pro Tweet: {tweet}")
+                
+                # Usage metadata göster
+                if 'usageMetadata' in result:
+                    usage = result['usageMetadata']
+                    print(f"📊 Token kullanımı: {usage.get('promptTokenCount', 0)} input + {usage.get('candidatesTokenCount', 0)} output = {usage.get('totalTokenCount', 0)} total")
+                
+                # Tweet temizleme işlemi
+                return clean_tweet(tweet, length_config, clean_project_name)
+            else:
+                print("⚠️ Gemini yanıt aldı ama content yok")
+                print(f"Response: {result}")
+                return None
+                
+        elif response.status_code == 429:
+            print("⚠️ Gemini rate limit! Biraz bekleyip tekrar dene.")
+            return None
+        else:
+            print(f"❌ Gemini API hatası: {response.status_code}")
+            print(f"Response: {response.text}")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Gemini API exception: {e}")
+        return None
+
 def get_enhanced_ai_tweet(project_key, sentiment_data, target_length, tweet_type, type_config):
     """Enhanced AI tweet - önceden seçilmiş tweet tipi ile DOĞAL İNSAN GİBİ"""
     import random
@@ -875,13 +1068,18 @@ Tweet yaz."""
     
     prompt = type_prompts.get(tweet_type, type_prompts["casual_discovery"])
     
-    # ChatGPT API call
-    headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
-    
-    # Uzun tweet'ler için daha fazla token
-    max_tokens_value = 1500 if length_config['style'] == 'thread' else 500
-    
-    system_prompt = f"""Sen crypto takip eden samimi bir insansın. Twitter'da doğal konuşursun.
+    # AI API call - Gemini öncelikli, OpenAI fallback
+    if gemini_key:
+        # Gemini API call
+        return call_gemini_api(prompt, length_config, clean_project_name)
+    elif openai_key:
+        # ChatGPT API call (fallback)
+        headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
+        
+        # Uzun tweet'ler için daha fazla token
+        max_tokens_value = 1500 if length_config['style'] == 'thread' else 500
+        
+        system_prompt = f"""Sen crypto takip eden samimi bir insansın. Twitter'da doğal konuşursun.
 
 KURAL:
 - {length_config['min']}-{length_config['max']} karakter tweet yaz
@@ -891,8 +1089,8 @@ KURAL:
 
 İSTEDİĞİM TON: Crypto meraklısı, gerçek insan, abartısız"""
 
-    if length_config['style'] == 'thread':
-        system_prompt += f"""
+        if length_config['style'] == 'thread':
+            system_prompt += f"""
 
 ÖZEL: Bu uzun makale tarzı tweet (2000-3000 karakter)
 - Detaylı analiz yap, birden fazla paragraf kullan
@@ -900,8 +1098,8 @@ KURAL:
 - Twitter Blue uzun tweet formatında
 - Makale gibi yapılandır ama samimi tondan çıkma
 - Giriş-gelişme-sonuç yapısı kullan"""
-    else:
-        system_prompt += f"""
+        else:
+            system_prompt += f"""
 
 ÖRNEK İYİ CÜMLELER:
 "X'in şu özelliği bayağı mantıklı geldi"
@@ -910,113 +1108,89 @@ KURAL:
 
 Sadece tweet yaz."""
 
-    data = {
-        "model": "gpt-4o-mini",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt}
-        ],
-        "max_tokens": max_tokens_value,
-        "temperature": 1.1
-    }
+        data = {
+            "model": "gpt-4o-mini",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            "max_tokens": max_tokens_value,
+            "temperature": 1.1
+        }
     
-    try:
-        print(f"🤖 ChatGPT API çağrısı yapılıyor...")
-        print(f"🔑 API Key başı: {openai_key[:20]}..." if openai_key else "❌ API Key YOK!")
-        print(f"📝 Prompt: {prompt[:100]}...")
-        
-        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
-        
-        print(f"📡 API Response Status: {response.status_code}")
-        print(f"📄 Response Headers: {dict(response.headers)}")
-        
-        if response.status_code == 200:
-            result = response.json()
-            tweet = result['choices'][0]['message']['content'].strip()
+        try:
+            print(f"🤖 ChatGPT API çağrısı yapılıyor...")
+            print(f"🔑 API Key başı: {openai_key[:20]}..." if openai_key else "❌ API Key YOK!")
+            print(f"📝 Prompt: {prompt[:100]}...")
             
-            print(f"✅ ChatGPT Tweet: {tweet}")
+            response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
             
-            # HASHTAG VE UZUN ÇİZGİ TEMİZLİK
-            tweet = tweet.replace('—', ' ')
-            tweet = tweet.replace('–', ' ')
-            tweet = tweet.replace('-', ' ')
+            print(f"📡 API Response Status: {response.status_code}")
+            print(f"📄 Response Headers: {dict(response.headers)}")
             
-            # Hashtag'leri temizle
-            import re
-            tweet = re.sub(r'#\w+', '', tweet)  # #bitcoin, #crypto vs. sil
-            tweet = re.sub(r'\s+', ' ', tweet)  # Çoklu boşlukları tek yap
-            tweet = tweet.strip()  # Baştan sondaki boşlukları sil
-            
-            # @ ile başlarsa düzelt (ana timeline'da gözükmez yoksa) + @ mention'ları temizle
-            if tweet.startswith('@'):
-                # @mention'ı bul ve tweet'i yeniden düzenle
-                parts = tweet.split(' ', 1)
-                if len(parts) > 1:
-                    mention = parts[0]
-                    rest = parts[1]
-                    # @ mention'ını çıkar, proje ismini al
-                    project_name = mention.replace('@', '').replace('_', ' ').title()
-                    tweet = f"{project_name} {rest}"
-                    print(f"🔧 @ ile başlıyordu, düzeltildi: {tweet}")
-            
-            # Tüm @ mention'larını proje ismiyle değiştir ve gereksiz kelimeleri temizle
-            import re
-            for project_key, project_data in projects.items():
-                mention = project_data['mention']
-                project_name = mention.replace('@', '').replace('_', ' ').title()
-                # @ mention ve temiz isim olmayan varyasyonları da değiştir
-                variations = [
-                    mention,  # @campnetworkxyz
-                    mention.replace('@', ''),  # campnetworkxyz
-                    mention.replace('@', '').lower(),  # campnetworkxyz
-                    mention.replace('@', '').capitalize(),  # Campnetworkxyz
-                    mention.replace('@', '').upper()  # CAMPNETWORKXYZ
-                ]
-                for var in variations:
-                    tweet = tweet.replace(var, project_name)
-            
-            # "şu, ya, nasıl bence" gibi gereksiz kelimeleri temizle
-            unwanted_phrases = [
-                "şu ", "ya ", "nasıl bence", "bence nasıl", 
-                "nasıl ya", "ya nasıl", "şu proje", "bu proje"
-            ]
-            for phrase in unwanted_phrases:
-                tweet = tweet.replace(phrase, "")
-            
-            # Çoklu boşlukları temizle ve düzelt
-            tweet = re.sub(r'\s+', ' ', tweet).strip()
-            
-            print(f"🧹 Temizlenmiş tweet: {tweet}")
-            
-            # Uzunluk kontrolü - eğer uygun değilse kısalt veya uzat
-            if len(tweet) > length_config['max']:
-                tweet = tweet[:length_config['max']-3] + "..."
-                print(f"✂️ Tweet kısaltıldı: {len(tweet)} karakter")
-            elif len(tweet) < length_config['min']:
-                tweet += " takip etmeye değer bence."
-                print(f"📏 Tweet uzatıldı: {len(tweet)} karakter")
-            
-            print(f"✅ ChatGPT tweet kullanılıyor!")
-            return tweet
-        else:
-            print(f"❌ AI API hatası: {response.status_code}")
-            print(f"❌ Response body: {response.text}")
-            print(f"❌ Request data: {data}")
-            # Fallback mekanizması kaldırıldı; None döndür
+            if response.status_code == 200:
+                result = response.json()
+                tweet = result['choices'][0]['message']['content'].strip()
+                
+                print(f"✅ ChatGPT Tweet: {tweet}")
+                return clean_tweet(tweet, length_config, clean_project_name)
+            else:
+                print(f"❌ OpenAI API hatası: {response.status_code}")
+                print(f"❌ Response body: {response.text}")
+                return None
+                
+        except Exception as e:
+            print(f"❌ OpenAI request exception: {e}")
             return None
-            
-    except Exception as e:
-        print(f"❌ AI request exception: {e}")
-        print(f"❌ Exception type: {type(e)}")
-        import traceback
-        print(f"❌ Traceback: {traceback.format_exc()}")
-        # Fallback mekanizması kaldırıldı
+    else:
+        print("❌ Hiçbir AI API key'i bulunamadı!")
         return None
 
 # retry_chatgpt fonksiyonu kaldırıldı - artık fallback yok
 
+def test_gemini():
+    """Gemini API test"""
+    if not gemini_key:
+        print("⚠️ Gemini API key yok, test atlanıyor")
+        return False
+        
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={gemini_key}"
+    data = {
+        "contents": [{
+            "parts": [{
+                "text": "Merhaba! Bu bir test. Sadece 'Test başarılı' yaz."
+            }]
+        }],
+        "generationConfig": {
+            "temperature": 0.5,
+            "maxOutputTokens": 20
+        }
+    }
+    
+    try:
+        response = requests.post(url, json=data)
+        if response.status_code == 200:
+            result = response.json()
+            if 'candidates' in result and len(result['candidates']) > 0:
+                text = result['candidates'][0]['content']['parts'][0]['text']
+                print(f"✅ Gemini API çalışıyor! Yanıt: {text.strip()}")
+                return True
+            else:
+                print(f"⚠️ Gemini API yanıt verdi ama içerik yok")
+                return False
+        else:
+            print(f"❌ Gemini API hatası: {response.status_code} - {response.text}")
+            return False
+    except Exception as e:
+        print(f"❌ Gemini API exception: {e}")
+        return False
+
 def test_openai():
-    """OpenAI API test"""
+    """OpenAI API test (fallback)"""
+    if not openai_key:
+        print("⚠️ OpenAI API key yok, test atlanıyor")
+        return False
+        
     headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
     data = {
         "model": "gpt-4o-mini",
@@ -1891,11 +2065,27 @@ def main():
             print("❌ Twitter API bağlantısı başarısız! Bot durduruluyor.")
             return
         
-        if not test_openai():
-            print("❌ OpenAI API çalışmıyor! Bot durduruluyor (sadece ChatGPT kullanılıyor).")
+        # AI API testleri - Gemini öncelikli
+        ai_working = False
+        if gemini_key:
+            if test_gemini():
+                print("✅ Gemini API çalışıyor! Primary AI olarak kullanılacak.")
+                ai_working = True
+            else:
+                print("⚠️ Gemini API çalışmıyor, OpenAI'ya geçiliyor...")
+        
+        if not ai_working and openai_key:
+            if test_openai():
+                print("✅ OpenAI API çalışıyor! Fallback AI olarak kullanılacak.")
+                ai_working = True
+            else:
+                print("❌ OpenAI API de çalışmıyor!")
+        
+        if not ai_working:
+            print("❌ Hiçbir AI API çalışmıyor! Bot durduruluyor.")
             return
         else:
-            print("✅ Tüm API'ler çalışıyor!")
+            print("✅ AI API hazır!")
         
         print("⏰ İlk tweet schedule'da bekliyor (rate limiting güvenliği için)")
         
@@ -1907,12 +2097,13 @@ def main():
         # Her 30 dakikada kontrol et
         schedule.every(30).minutes.do(scheduled_tweet_v2)
         
-        print("⏰ Enhanced Bot schedule'ı ayarlandı:")
+        print("⏰ Gemini Enhanced Bot schedule'ı ayarlandı:")
+        print("   🧠 Gemini 2.5 Pro PRIMARY AI (en güçlü + 2M token)")
         print("   📊 Her 30dk: Analytics kontrol, mention yanıt (%30)")
         print("   📈 Otomatik: Tweet performans takibi")
         print("   🎯 Quote tweet (%15), Meme tweet (%10), Zaman bazlı ton")
-        print("   🤖 Normal tweet modu (haber sistemi kaldırıldı)")
-        print("🔄 Enhanced Bot çalışmaya başladı! Ctrl+C ile durdurun.")
+        print("   🤖 Gemini tweet modu (OpenAI fallback)")
+        print("🔄 Gemini Enhanced Bot çalışmaya başladı! Ctrl+C ile durdurun.")
         print("\nTest komutları:")
         print("   python bot.py test    - Normal tweet testi")
         print("   python bot.py quote   - Quote tweet testi")
