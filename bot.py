@@ -211,20 +211,25 @@ projects = {
     }
 }
 
-# Tweet uzunluk kategorileri - THREAD DESTEĞİ İLE
+# Tweet uzunluk kategorileri - UZUN DETAYLI ANALİZ ODAKLI
 TWEET_LENGTHS = {
-    "short": {"weight": 35, "min": 200, "max": 350, "style": "punch"},      # %35 - Kısa & Punch
-    "medium": {"weight": 45, "min": 350, "max": 500, "style": "normal"},    # %45 - Normal 
-    "long": {"weight": 15, "min": 500, "max": 650, "style": "analysis"},    # %15 - Uzun analiz
-    "thread": {"weight": 5, "min": 2000, "max": 3000, "style": "thread"}    # %5 - Thread (2-3k karakter)
+    "medium": {"weight": 40, "min": 1000, "max": 1500, "style": "normal"},     # %40 - Normal detaylı
+    "long": {"weight": 35, "min": 1500, "max": 2500, "style": "analysis"},     # %35 - Uzun analiz
+    "extended": {"weight": 20, "min": 2500, "max": 4000, "style": "detailed"}, # %20 - Genişletilmiş
+    "thread": {"weight": 5, "min": 4000, "max": 8000, "style": "thread"}       # %5 - Thread (4-8k karakter)
 }
 
-# TWEET TİPLERİ - DOĞAL VE ÇEŞİTLİ İNSAN GİBİ
+# TWEET TİPLERİ - DETAYLI ANALİZ ODAKLI
 TWEET_TYPES = {
     "tech_deep": {
-        "weight": 20,
+        "weight": 25,
         "style": "Teknoloji odaklı derinlemesine açıklama",
         "tone": "Teknik ama anlaşılır, bilgi paylaşan"
+    },
+    "market_perspective": {
+        "weight": 20,
+        "style": "Piyasa analizi ve görüş",
+        "tone": "Analitik ama kişisel görüş"
     },
     "casual_discovery": {
         "weight": 18,
@@ -236,25 +241,15 @@ TWEET_TYPES = {
         "style": "Günlük hayat metaforlarıyla teknik açıklama",
         "tone": "Eğlenceli ama öğretici, Türk kültürü referansları"
     },
-    "market_perspective": {
-        "weight": 12,
-        "style": "Piyasa analizi ve görüş",
-        "tone": "Analitik ama kişisel görüş"
-    },
     "comparison": {
         "weight": 12,
         "style": "Başka projelerle karşılaştırma", 
         "tone": "Karşılaştırmalı, objektif"
     },
     "quote_commentary": {
-        "weight": 12,
+        "weight": 8,
         "style": "Proje tweet'ine yorum yapma",
         "tone": "Yorumlayıcı, kişisel görüş ekleyen"
-    },
-    "crypto_meme": {
-        "weight": 8,
-        "style": "Eğlenceli meme tarzı",
-        "tone": "Mizahi ama bilgili, crypto insider"
     },
     "experience_share": {
         "weight": 8,
@@ -512,14 +507,14 @@ def get_time_based_tone():
         }
 
 def choose_tweet_length():
-    """Ağırlıklı rastgele tweet uzunluğu seç - thread desteği ile"""
+    """Ağırlıklı rastgele tweet uzunluğu seç - uzun analiz odaklı"""
     rand = random.randint(1, 100)
-    if rand <= 35:
-        return TWEET_LENGTHS["short"]
-    elif rand <= 80:  # 35 + 45
-        return TWEET_LENGTHS["medium"] 
-    elif rand <= 95:  # 35 + 45 + 15
-        return TWEET_LENGTHS["long"]
+    if rand <= 40:
+        return TWEET_LENGTHS["medium"]
+    elif rand <= 75:  # 40 + 35
+        return TWEET_LENGTHS["long"] 
+    elif rand <= 95:  # 40 + 35 + 20
+        return TWEET_LENGTHS["extended"]
     else:  # 5% - Thread
         return TWEET_LENGTHS["thread"]
 
@@ -592,6 +587,45 @@ def clean_tweet(tweet, length_config, clean_project_name):
     # Çoklu boşlukları temizle ve düzelt
     tweet = re.sub(r'\s+', ' ', tweet).strip()
     
+    # Paragraf formatı düzelt - mantıklı paragraf geçişlerinde boş satır ekle
+    if len(tweet) > 800:  # Sadece uzun tweet'lerde uygula
+        # İlk olarak tweet'i cümlelere böl
+        sentences = re.split(r'([.!?])\s+', tweet)
+        formatted_sentences = []
+        current_paragraph = ""
+        
+        for i in range(0, len(sentences)-1, 2):
+            sentence = sentences[i] + (sentences[i+1] if i+1 < len(sentences) else "")
+            current_paragraph += sentence + " "
+            
+            # Paragraf geçiş koşulları:
+            # 1. 200+ karakter olmuşsa ve mantıklı bir geçiş varsa
+            # 2. Konu değişimi gösteren anahtar kelimeler
+            topic_changes = [
+                "ama", "ancak", "fakat", "lakin", "diğer taraftan", 
+                "bir diğer", "başka bir", "aynı zamanda", "öte yandan",
+                "bunun yanında", "bu arada", "şimdi", "artık", "gelgelelim",
+                "işte", "peki", "sonuç olarak", "kısacası", "özetle"
+            ]
+            
+            if len(current_paragraph) > 200:
+                # Sonraki cümleye bak, konu değişimi var mı?
+                next_sentence_start = sentences[i+2] if i+2 < len(sentences) else ""
+                if any(word in next_sentence_start.lower()[:50] for word in topic_changes):
+                    formatted_sentences.append(current_paragraph.strip())
+                    current_paragraph = ""
+        
+        # Kalan kısmı ekle
+        if current_paragraph.strip():
+            formatted_sentences.append(current_paragraph.strip())
+        
+        # Paragrafları boş satırla birleştir
+        if len(formatted_sentences) > 1:
+            tweet = "\n\n".join(formatted_sentences)
+            print(f"📝 {len(formatted_sentences)} paragraf oluşturuldu")
+        else:
+            print(f"📝 Tek paragraf olarak bırakıldı")
+    
     print(f"🧹 Temizlenmiş tweet: {tweet}")
     
     # Uzunluk kontrolü - eğer uygun değilse kısalt veya uzat
@@ -612,12 +646,19 @@ def call_gemini_api(prompt, length_config, clean_project_name):
         combined_prompt = f"""Sen crypto takip eden samimi bir insansın. Twitter'da doğal konuşursun.
 
 KURAL:
-- {length_config['min']}-{length_config['max']} karakter tweet yaz
+- {length_config['min']}-{length_config['max']} karakter tweet yaz (minimum 1000 karakter gerekli)
 - {clean_project_name} ismini doğal şekilde kullan
 - @ işareti, hashtag kullanma
 - Samimi, arkadaşça konuş - sanki bir arkadaşına anlatıyorsun
+- Detaylı ve derinlemesine analiz yap
+- Paragraflar arasında BOŞ SATIR bırak (görsel olarak daha güzel görünsün)
 
-İSTEDİĞİM TON: Crypto meraklısı, gerçek insan, abartısız
+FORMATLLAMA:
+- Her ana fikri ayrı paragrafta yaz
+- Paragraflar arasında bir satır boş bırak
+- Uzun cümleri böl, okunabilir yap
+
+İSTEDİĞİM TON: Crypto meraklısı, gerçek insan, abartısız ama detaylı
 
 {prompt}
 
@@ -637,7 +678,7 @@ Sadece tweet yaz, başka hiçbir şey ekleme."""
                 "temperature": 1.1,
                 "topK": 40,
                 "topP": 0.95,
-                "maxOutputTokens": 8000 if length_config['style'] == 'thread' else 2000
+                "maxOutputTokens": 12000 if length_config['style'] == 'thread' else 4000
             }
         }
         
@@ -749,6 +790,8 @@ def get_enhanced_ai_tweet(project_key, sentiment_data, target_length, tweet_type
     type_prompts = {
         "tech_deep": f"""{clean_project_name} hakkında {"uzun makale tarzı" if length_config['style'] == 'thread' else f"{length_config['min']}-{length_config['max']} karakter"} tweet at. Crypto insanı gibi konuş.
 
+⚠️ FORMATLLAMA: Paragraflar arasında BOŞ SATIR bırak!
+
 PROJE: {project['focus']} - {project['specialty']}
 TEKNİK: {project.get('tech_detail', '')}
 İNOVASYON: {project.get('key_innovation', '')}
@@ -776,11 +819,19 @@ TON: {time_tone['tone']} + teknik bilgili crypto insanı
 {f'''
 Giriş paragrafı - Projeyi tanıt ve neden ilginç olduğunu açıkla
 
+(BOŞ SATIR)
+
 Teknik paragraf - Teknolojinin nasıl çalıştığını samimi dille anlat  
+
+(BOŞ SATIR)
 
 Kullanım paragrafı - Gerçek hayatta nerelerde kullanılacağını söyle
 
+(BOŞ SATIR)
+
 Karşılaştırma paragrafı - Diğer projelerle kıyasla
+
+(BOŞ SATIR)
 
 Sonuç paragrafı - Gelecek ve potansiyel hakkında düşünceler''' if length_config['style'] == 'thread' else '''
 "X projesinin şu özelliği gerçekten akıllıca. Böyle yaklaşımları seviyorum..."
@@ -790,6 +841,8 @@ Sonuç paragrafı - Gelecek ve potansiyel hakkında düşünceler''' if length_c
 Sadece tweet yaz, açıklama yapma.""",
 
         "casual_discovery": f"""{clean_project_name} hakkında {length_config['min']}-{length_config['max']} karakter casual tweet at.
+
+⚠️ FORMATLLAMA: Paragraflar arasında BOŞ SATIR bırak!
 
 DURUM: {project.get('development_stage', project['price_action'])}
 ÖZELLIK: {project['specialty']}
@@ -816,6 +869,8 @@ Sadece tweet yaz.""",
 
         "market_perspective": f"""{clean_project_name} piyasa durumu hakkında {length_config['min']}-{length_config['max']} karakter tweet at.
 
+⚠️ FORMATLLAMA: Paragraflar arasında BOŞ SATIR bırak!
+
 DURUM: {project['token_status']} - {project['price_action']}
 SEKTÖR: {project['ecosystem']}
 
@@ -839,6 +894,8 @@ Risk uyarısı yapma, sadede gel. Tweet yaz.""",
 
         "comparison": f"""{clean_project_name} vs diğer projeler hakkında {length_config['min']}-{length_config['max']} karakter tweet at.
 
+⚠️ FORMATLLAMA: Paragraflar arasında BOŞ SATIR bırak!
+
 PROJE FARKLIĞI: {project.get('key_innovation', project['specialty'])}
 ALAN: {project['focus']}
 
@@ -861,6 +918,8 @@ TON: Objektif ama meraklı karşılaştırma yapan biri
 Sadece tweet yaz.""",
 
         "daily_metaphor": f"""{clean_project_name} hakkında {"uzun makale tarzı" if length_config['style'] == 'thread' else f"{length_config['min']}-{length_config['max']} karakter"} tweet at. Günlük hayat metaforlarıyla teknik konuları açıkla.
+
+⚠️ FORMATLLAMA: Paragraflar arasında BOŞ SATIR bırak!
 
 PROJE: {project['focus']} - {project['specialty']}
 TEKNİK: {project.get('tech_detail', '')}
@@ -904,10 +963,23 @@ GÜNLÜK HAYAT METAFORLARİ:
 - Komşuluk (dedikodu, yardımlaşma)
 
 {f'''UZUN MAKALE YAPISI (Metaforlarla):
+
 Giriş - Projeyi tanıdık bir durum/kişiyle karşılaştır
+
+(BOŞ SATIR)
+
 Teknik kısım - Karmaşık teknolojiyikomşu-akraba ilişkileriyle açıkla  
+
+(BOŞ SATIR)
+
 Avantajlar - "Ne kazanıyoruz" sorusunu günlük hayat örnekleriyle
+
+(BOŞ SATIR)
+
 Rakipler - Diğer çözümlerle kıyaslama (başka ev/dükkanlarlayarışır gibi)
+
+(BOŞ SATIR)
+
 Sonuç - Gelecekle ilgili eğlenceli tahmin''' if length_config['style'] == 'thread' else ""}
 
 Sadece tweet yaz, böyle eğlenceli metaforlarla açıkla!""",
@@ -940,56 +1012,7 @@ TON: Projeyi takip eden, bilgili ama samimi biri + {time_tone['tone']}
 
 Quote tweet yapıyormuş gibi tweet yaz.""",
 
-        "crypto_meme": f"""{clean_project_name} hakkında {length_config['min']}-{length_config['max']} karakter eğlenceli meme tweet at.
 
-PROJE: {project['focus']}
-İNOVASYON: {project.get('key_innovation', project['specialty'])}
-PROBLEM: {project.get('tech_detail', '')}
-
-ZAMAN TONU: {time_tone['modifier']}
-
-MEME FORMAT SEÇENEKLERİ:
-1. "Nobody: 
-   {clean_project_name}: [özelliği açıklama]"
-
-2. "Me trying to understand blockchains
-   {clean_project_name}: [basit açıklama]
-   Me: wait, that actually makes sense"
-
-3. "Other projects: [karmaşık yaklaşım]
-   {clean_project_name}: [basit yaklaşım]
-   Crypto Twitter: 👁️👄👁️"
-
-4. "Dev 1: How do we make this work?
-   Dev 2: Just add more complexity
-   {clean_project_name} team: Actually..."
-
-5. "Everyone: blockchain is hard
-   {clean_project_name}: what if we just [basit çözüm]
-   Users: why didn't we think of that"
-
-YAPMA:
-- Çok teknik jargon
-- Anlaşılmaz insider reference'lar
-- Projeyi kötüleme
-- Fazla karmaşık format
-
-YAP:
-- Format'lardan birini seç ve o şekilde yaz
-- Proje özelliğini komik şekilde vurgula
-- Basit, anlaşılır crypto mizah
-- Community'nin anlayacağı referanslar
-
-TON: {time_tone['tone']} + crypto meme lord
-
-ÖRNEK OUTPUT:
-"Nobody:
-
-Anoma: what if users just describe what they want and we figure out the rest automatically
-
-Blockchain Twitter: 🤯"
-
-Sadece tweet yaz, format seç ve uygula.""",
 
         "experience_share": f"""{clean_project_name} deneyimi hakkında {length_config['min']}-{length_config['max']} karakter tweet at.
 
@@ -1076,28 +1099,37 @@ Tweet yaz."""
         # ChatGPT API call (fallback)
         headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
         
-        # Uzun tweet'ler için daha fazla token
-        max_tokens_value = 1500 if length_config['style'] == 'thread' else 500
+        # Uzun tweet'ler için daha fazla token (minimum 1000 karakter için)
+        max_tokens_value = 3000 if length_config['style'] == 'thread' else 1500
         
         system_prompt = f"""Sen crypto takip eden samimi bir insansın. Twitter'da doğal konuşursun.
 
 KURAL:
-- {length_config['min']}-{length_config['max']} karakter tweet yaz
+- {length_config['min']}-{length_config['max']} karakter tweet yaz (minimum 1000 karakter gerekli)
 - {clean_project_name} ismini doğal şekilde kullan
 - @ işareti, hashtag kullanma
 - Samimi, arkadaşça konuş - sanki bir arkadaşına anlatıyorsun
+- Detaylı ve derinlemesine analiz yap
+- Paragraflar arasında BOŞ SATIR bırak (görsel olarak daha güzel görünsün)
 
-İSTEDİĞİM TON: Crypto meraklısı, gerçek insan, abartısız"""
+FORMATLLAMA:
+- Her ana fikri ayrı paragrafta yaz
+- Paragraflar arasında bir satır boş bırak
+- Uzun cümleri böl, okunabilir yap
+
+İSTEDİĞİM TON: Crypto meraklısı, gerçek insan, abartısız ama detaylı"""
 
         if length_config['style'] == 'thread':
             system_prompt += f"""
 
-ÖZEL: Bu uzun makale tarzı tweet (2000-3000 karakter)
+ÖZEL: Bu uzun makale tarzı tweet (4000-8000 karakter)
 - Detaylı analiz yap, birden fazla paragraf kullan
 - Teknik konuları derinlemesine açıkla
 - Twitter Blue uzun tweet formatında
 - Makale gibi yapılandır ama samimi tondan çıkma
-- Giriş-gelişme-sonuç yapısı kullan"""
+- Giriş-gelişme-sonuç yapısı kullan
+- Her paragraf arasında BOŞ SATIR bırak (çok önemli!)
+- Alt başlıklar kullanabilirsin (emoji ile)"""
         else:
             system_prompt += f"""
 
@@ -2008,18 +2040,7 @@ def main():
                 print("❌ Quote tweet oluşturulamadı")
         else:
             print("❌ Proje tweet'i bulunamadı")
-    elif len(sys.argv) > 1 and sys.argv[1] == "meme":
-        print("😂 Meme tweet testi")
-        # Specific meme test
-        project_key = list(projects.keys())[0]  # İlk projeyi seç
-        sentiment_data = search_twitter_sentiment(project_key)
-        length_config = choose_tweet_length()
-        
-        tweet_content = get_enhanced_ai_tweet(project_key, sentiment_data, length_config, "crypto_meme", TWEET_TYPES["crypto_meme"])
-        if tweet_content:
-            print(f"😂 Meme tweet: {tweet_content}")
-        else:
-            print("❌ Meme tweet oluşturulamadı")
+
     elif len(sys.argv) > 1 and sys.argv[1] == "time":
         print("⏰ Zaman bazlı ton testi")
         # Test different time tones manually
@@ -2101,13 +2122,12 @@ def main():
         print("   🧠 Gemini 2.5 Pro PRIMARY AI (en güçlü + 2M token)")
         print("   📊 Her 30dk: Analytics kontrol, mention yanıt (%30)")
         print("   📈 Otomatik: Tweet performans takibi")
-        print("   🎯 Quote tweet (%15), Meme tweet (%10), Zaman bazlı ton")
+        print("   🎯 Quote tweet, Detaylı analiz odaklı, Zaman bazlı ton")
         print("   🤖 Gemini tweet modu (OpenAI fallback)")
         print("🔄 Gemini Enhanced Bot çalışmaya başladı! Ctrl+C ile durdurun.")
         print("\nTest komutları:")
         print("   python bot.py test    - Normal tweet testi")
         print("   python bot.py quote   - Quote tweet testi")
-        print("   python bot.py meme    - Meme tweet testi")
         print("   python bot.py time    - Zaman tonu testi")
         
         # Sonsuz döngü
