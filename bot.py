@@ -213,10 +213,10 @@ projects = {
 
 # Tweet uzunluk kategorileri - UZUN DETAYLI ANALİZ ODAKLI
 TWEET_LENGTHS = {
-    "medium": {"weight": 40, "min": 1000, "max": 1500, "style": "normal"},     # %40 - Normal detaylı
-    "long": {"weight": 35, "min": 1500, "max": 2500, "style": "analysis"},     # %35 - Uzun analiz
-    "extended": {"weight": 20, "min": 2500, "max": 4000, "style": "detailed"}, # %20 - Genişletilmiş
-    "thread": {"weight": 5, "min": 4000, "max": 8000, "style": "thread"}       # %5 - Thread (4-8k karakter)
+    "medium": {"weight": 40, "min": 1000, "max": 2000, "style": "normal"},     # %40 - Normal detaylı
+    "long": {"weight": 35, "min": 2000, "max": 3500, "style": "analysis"},     # %35 - Uzun analiz
+    "extended": {"weight": 20, "min": 3500, "max": 5000, "style": "detailed"}, # %20 - Genişletilmiş
+    "thread": {"weight": 5, "min": 5000, "max": 10000, "style": "thread"}      # %5 - Thread (5-10k karakter)
 }
 
 # TWEET TİPLERİ - DETAYLI ANALİZ ODAKLI
@@ -630,10 +630,27 @@ def clean_tweet(tweet, length_config, clean_project_name):
     
     # Uzunluk kontrolü - eğer uygun değilse kısalt veya uzat
     if len(tweet) > length_config['max']:
-        tweet = tweet[:length_config['max']-3] + "..."
-        print(f"✂️ Tweet kısaltıldı: {len(tweet)} karakter")
+        # Akıllı kısaltma - cümle sonunda kes
+        max_length = length_config['max'] - 10  # 10 karakter buffer
+        if max_length < len(tweet):
+            # Son cümle sonunu bul
+            cut_tweet = tweet[:max_length]
+            last_period = cut_tweet.rfind('.')
+            last_exclamation = cut_tweet.rfind('!')
+            last_question = cut_tweet.rfind('?')
+            
+            # En son noktalama işaretini bul
+            last_punct = max(last_period, last_exclamation, last_question)
+            
+            if last_punct > max_length - 200:  # Çok geride değilse
+                tweet = tweet[:last_punct + 1]
+                print(f"✂️ Tweet akıllı kısaltıldı (cümle sonunda): {len(tweet)} karakter")
+            else:
+                tweet = tweet[:max_length] + "..."
+                print(f"✂️ Tweet zorla kısaltıldı: {len(tweet)} karakter")
+        
     elif len(tweet) < length_config['min']:
-        tweet += " takip etmeye değer bence."
+        tweet += " Takip etmeye değer bence."
         print(f"📏 Tweet uzatıldı: {len(tweet)} karakter")
     
     print(f"✅ AI tweet kullanılıyor!")
