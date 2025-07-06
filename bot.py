@@ -14,6 +14,108 @@ import re
 # News monitoring imports kaldırıldı
 
 # ------------------------------------------------------------
+# Tweet Geçmişi Takip Sistemi
+# ------------------------------------------------------------
+TWEET_HISTORY_FILE = "tweet_history.json"
+
+def load_tweet_history():
+    """Tweet geçmişini yükle"""
+    try:
+        if os.path.exists(TWEET_HISTORY_FILE):
+            with open(TWEET_HISTORY_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        else:
+            return {
+                "project_mentions": {},
+                "total_tweets": 0,
+                "last_tweet_date": None
+            }
+    except Exception as e:
+        print(f"❌ Tweet history yüklenirken hata: {e}")
+        return {
+            "project_mentions": {},
+            "total_tweets": 0,
+            "last_tweet_date": None
+        }
+
+def save_tweet_history(history):
+    """Tweet geçmişini kaydet"""
+    try:
+        with open(TWEET_HISTORY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(history, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"❌ Tweet history kaydedilirken hata: {e}")
+
+def update_project_mention_history(project_key, mention_type="general"):
+    """Proje bahsetme geçmişini güncelle"""
+    history = load_tweet_history()
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    if project_key not in history["project_mentions"]:
+        history["project_mentions"][project_key] = {
+            "count": 0,
+            "last_mentioned": None,
+            "mention_types": [],
+            "first_mention_date": today
+        }
+    
+    # Güncelle
+    history["project_mentions"][project_key]["count"] += 1
+    history["project_mentions"][project_key]["last_mentioned"] = today
+    history["project_mentions"][project_key]["mention_types"].append(mention_type)
+    
+    # Son 10 mention type'ı tut (dosya şişmesin)
+    if len(history["project_mentions"][project_key]["mention_types"]) > 10:
+        history["project_mentions"][project_key]["mention_types"] = history["project_mentions"][project_key]["mention_types"][-10:]
+    
+    history["total_tweets"] += 1
+    history["last_tweet_date"] = today
+    
+    save_tweet_history(history)
+    print(f"📊 {project_key} mention history güncellendi: {history['project_mentions'][project_key]['count']} kez bahsedildi")
+
+def get_project_mention_count(project_key):
+    """Projeden kaç kez bahsedildiğini öğren"""
+    history = load_tweet_history()
+    if project_key in history["project_mentions"]:
+        return history["project_mentions"][project_key]["count"]
+    return 0
+
+def get_days_since_last_mention(project_key):
+    """Son bahsetmeden bu yana kaç gün geçti"""
+    history = load_tweet_history()
+    if project_key in history["project_mentions"] and history["project_mentions"][project_key]["last_mentioned"]:
+        last_date = datetime.strptime(history["project_mentions"][project_key]["last_mentioned"], '%Y-%m-%d')
+        today = datetime.now()
+        return (today - last_date).days
+    return 999  # Hiç bahsedilmemiş
+
+def select_smart_opening_style(project_key):
+    """Geçmişe bakarak akıllı başlangıç stili seç"""
+    mention_count = get_project_mention_count(project_key)
+    days_since = get_days_since_last_mention(project_key)
+    
+    if mention_count == 0:
+        # İlk kez bahsediliyor
+        return "first_discovery"
+    elif mention_count == 1:
+        # 2. kez bahsediliyor
+        if days_since <= 7:
+            return "recent_follow_up"
+        else:
+            return "rediscovery"
+    elif mention_count >= 2:
+        # 3. ve sonraki kez
+        if days_since <= 3:
+            return "frequent_update"
+        elif days_since <= 14:
+            return "regular_check"
+        else:
+            return "long_term_follow"
+    
+    return "general"  # fallback
+
+# ------------------------------------------------------------
 # Ortam Değişkenlerini .env dosyasından yükle ve UTF-8 çıktı ayarla
 # ------------------------------------------------------------
 import sys as _sys
@@ -91,36 +193,62 @@ elif openai_key:
 
 print("✅ Tüm API anahtarları yüklendi!")
 
-# Kaito projeleri - GERÇEKÇİ TÜRKÇE DATA
+# Güncel Takip Edilen Projeler - 8 Proje
 projects = {
+    "infinitlabs": {
+        "mention": "@infinitlabs", 
+        "focus": "DeFi Infrastructure", 
+        "specialty": "next-gen yield farming ve liquidity management protokolü",
+        "trends": ["yield aggregation teknolojisi", "automated portfolio rebalancing", "cross-chain DeFi", "institutional DeFi araçları"],
+        "price_action": "airdrop programı yaklaşıyor, TVL artıyor",
+        "ecosystem": "Multi-chain DeFi protocol",
+        "personality": "yield ve verimlilik odaklı",
+        "token_status": "pre_token",
+        "tech_detail": "Automated vault system ile yield farming stratejilerini optimize ediyor. Cross-chain liquidity routing, risk-adjusted returns, gas optimization algorithms. Institutional grade risk management tools."
+    },
     "anoma": {
         "mention": "@anoma", 
         "focus": "intent-centric blockchain", 
         "specialty": "kullanıcı deneyiminde radikal basitleştirme sunan intent-based mimari",
         "trends": ["intent-based mimariler gelişiyor", "kullanıcı deneyimi odaklı blockchain", "mahremiyet teknolojileri", "chain-agnostic çözümler"],
         "price_action": "mainnet öncesi geliştirme aşamasında", 
-        "ecosystem": "Cosmos SDK tabanlı L1 blockchain",
+        "ecosystem": "Intent-centric L1 blockchain",
         "personality": "teknik ve mahremiyet odaklı",
         "token_status": "pre_token",
-        "tech_detail": "Intent-centric mimarisi, kullanıcıların 'ne yapmak istediklerini' belirtmesiyle yetinen sistem. Arka planda zincirler arası en uygun yolu otomatik hesaplıyor. zk-SNARKs teknolojisiyle entegre privacy özellikleri, geleneksel cross-chain çözümlerden ayrışıyor. Geliştirme sürecinde 3000+ TPS performans hedefini belirlemişler.",
-        "performance_data": "3000+ TPS hedef performans",
-        "development_stage": "geliştirme aşamasında (testnet henüz canlı değil)",
-        "key_innovation": "zk-SNARKs entegreli privacy özellikleri"
+        "tech_detail": "Intent-centric mimarisi ile kullanıcılar sadece ne yapmak istediklerini belirtiyor. zk-SNARKs entegreli privacy, 3000+ TPS hedef performans."
     },
-    "camp_network": {
-        "mention": "@campnetwork", 
-        "focus": "modüler blockchain yaklaşımı", 
-        "specialty": "özelleştirilebilir execution layer ile öne çıkan modüler mimari",
-        "trends": ["modüler blockchain çözümleri", "özelleştirilebilir execution layer", "validator ağı büyümesi", "developer tooling"],
-        "price_action": "yaklaşan token dağıtım programı",
-        "ecosystem": "Cosmos SDK tabanlı modüler blockchain",
-        "personality": "kimlik ve sosyal odaklı",
+    "memex": {
+        "mention": "@MemeXprotocol",
+        "focus": "meme coin infrastructure",
+        "specialty": "meme coin oluşturma ve yönetim platformu",
+        "trends": ["meme coin sezonu", "retail trader araçları", "automated meme trading", "social media entegrasyonu"],
+        "price_action": "meme coin trend'iyle birlikte momentum kazandı",
+        "ecosystem": "Meme coin creation platform",
+        "personality": "sosyal ve eğlence odaklı", 
+        "token_status": "active",
+        "tech_detail": "One-click meme coin deployment, automated liquidity provision, social sentiment tracking, viral marketing tools integration."
+    },
+    "uxlink": {
+        "mention": "@UXLINKofficial",
+        "focus": "social infrastructure",
+        "specialty": "Web3 sosyal ağ ve iletişim altyapısı",
+        "trends": ["Web3 sosyal uygulamalar", "decentralized messaging", "social token economy", "community governance"],
+        "price_action": "sosyal özellikler beta'da, kullanıcı artışı var",
+        "ecosystem": "Web3 social protocol",
+        "personality": "sosyal ve community odaklı",
+        "token_status": "active",
+        "tech_detail": "Decentralized messaging, social graph ownership, reputation systems, community reward mechanisms, cross-platform social identity."
+    },
+    "mitosis": {
+        "mention": "@mitosis_org", 
+        "focus": "likidite fragmentasyonu çözümü", 
+        "specialty": "DeFi alanında yeni standart oluşturmayı hedefleyen likidite protokolü",
+        "trends": ["likidite protokolü geliştirmeleri", "otomatik pazar yapıcılığı", "çapraz zincir likidite", "DeFi yield optimizasyonu"],
+        "price_action": "TVL hızla büyüyor, governance aktivitesi artıyor",
+        "ecosystem": "Yeni nesil DeFi protokolü",
+        "personality": "DeFi ve yield odaklı",
         "token_status": "pre_token",
-        "tech_detail": "Modüler blockchain yaklaşımıyla dört temel bileşen: Özelleştirilebilir execution layer, paylaşılan güvenlik modeli, cross-chain mesajlaşma protokolü, developer dostu SDK. Cosmos SDK tabanlı yapısıyla mevcut araçlarla uyumluluğu sağlıyor.",
-        "validator_network": "Testnet sürecinde 150+ validator katılımı",
-        "development_focus": "Developer dostu SDK",
-        "development_stage": "testnet aşamasında (katılım devam ediyor)",
-        "key_innovation": "Özelleştirilebilir execution layer"
+        "tech_detail": "Dinamik arbitraj botları, çoklu zincir slippage optimizasyonu, akıllı likidite routing. %40'a varan gas tasarrufu."
     },
     "virtuals": {
         "mention": "@virtuals_io", 
@@ -131,53 +259,7 @@ projects = {
         "ecosystem": "AI agent ekonomisi ve pazaryeri",
         "personality": "AI ve tokenizasyon odaklı",
         "token_status": "active",
-        "tech_detail": "AI agent pazarı: Farklı yeteneklerdeki yapay zeka ajanları tokenlaştırılıp pazarda işlem görüyor. Agent'lar sahipleri adına otomatik görevler yapıyor, kazandıkları gelir token ekonomisinde paylaşılıyor. Her agent'ın kendine özgü becerileri ve performans geçmişi var.",
-        "development_update": "Yeni AI agent kategorileri ve daha fazla platform entegrasyonu geliyor",
-        "performance_data": "1000+ aktif AI agent token'ı piyasada",
-        "development_stage": "aktif proje (marketplace canlıda)",
-        "key_innovation": "AI agent tokenizasyonu ve otomatik gelir paylaşımı"
-    },
-    "somnia": {
-        "mention": "@somnia_network", 
-        "focus": "virtual object standardı", 
-        "specialty": "metaverse'ler arası varlık taşınabilirliği sorunu çözen teknik yaklaşım",
-        "trends": ["gaming blockchain alanında çalışmalar", "metaverse interoperabilite", "virtual object standardı", "cross-platform gaming"],
-        "price_action": "mainnet öncesi, hype artıyor",
-        "ecosystem": "Metaverse ve gaming altyapısı",
-        "personality": "performans ve gaming odaklı",
-        "token_status": "pre_token",
-        "tech_detail": "Virtual object standardı, Unity tabanlı oyunda kazanılan eşyanın Polygon tabanlı metaverse'de, Unreal Engine'le geliştirilmiş sosyal platformda kullanılabilmesini sağlıyor. Universal rendering sistemi ve metadata şeması kullanıyor.",
-        "use_cases": "Çoklu platform oyun eşyası transferi",
-        "technical_stack": "Unity, Unreal Engine uyumluluğu",
-        "development_stage": "geliştirme aşamasında (mainnet öncesi)",
-        "key_innovation": "Universal rendering sistemi"
-    },
-    "union": {
-        "mention": "@union_build", 
-        "focus": "zk interoperabilite", 
-        "specialty": "sıfır bilgi köprüleri",
-        "trends": ["zk köprü teknolojisinde ilerlemeler", "çapraz zincir güvenlik çözümleri", "interoperabilite araştırmaları", "IBC protokolü geliştirmeleri"],
-        "price_action": "airdrop beklentisi çok yüksek",
-        "ecosystem": "Çapraz zincir altyapısı",
-        "personality": "teknik ve köprü odaklı",
-        "token_status": "pre_token",
-        "tech_detail": "Zero-knowledge köprüler: Blockchain'ler arası geçişlerde zk-proof kullanarak güvenliği artırır. Klasik köprülerdeki trust assumption'ları ortadan kaldırır, matematiksel olarak kanıtlanabilir güvenlik sağlar.",
-        "development_stage": "geliştirme aşamasında (airdrop öncesi)"
-    },
-    "mitosis": {
-        "mention": "@mitosis", 
-        "focus": "likidite fragmentasyonu çözümü", 
-        "specialty": "DeFi alanında yeni standart oluşturmayı hedefleyen likidite protokolü",
-        "trends": ["likidite protokolü geliştirmeleri", "otomatik pazar yapıcılığı", "çapraz zincir likidite", "DeFi yield optimizasyonu"],
-        "price_action": "TVL hızla büyüyor, governance aktivitesi artıyor",
-        "ecosystem": "Yeni nesil DeFi protokolü",
-        "personality": "DeFi ve yield odaklı",
-        "token_status": "pre_token",
-        "tech_detail": "Likidite fragmentasyonu sorununa üç yenilikçi mekanizma: Dinamik arbitraj botları, çoklu zincir slippage optimizasyonu ve akıllı likidite routing algoritmaları. Ethereum ve Layer 2'ler arasında %40'a varan gas tasarrufu sağlıyor.",
-        "performance_data": "%40'a varan gas tasarrufu",
-        "governance_update": "Ekosistem fonlarının %15'i developer ödüllerine ayrıldı",
-        "development_stage": "beta aşamasında (TVL büyüyor)",
-        "key_innovation": "Dinamik arbitraj botları ve slippage optimizasyonu"
+        "tech_detail": "AI agent marketplace, otomatik görev yürütme, gelir paylaşımı token ekonomisi, 1000+ aktif AI agent."
     },
     "pharos": {
         "mention": "@pharosnetwork",
@@ -188,11 +270,7 @@ projects = {
         "ecosystem": "DeFi, RWA ve DePIN uygulamaları",
         "personality": "performans ve RWA odaklı",
         "token_status": "pre_token",
-        "tech_detail": "EVM uyumlu Layer-1 blockchain: 1 saniye finality süresi, düşük depolama maliyetleri, AsyncBFT consensus algoritması. Ethereum geliştiricileri mevcut araçlarını kullanabilirken yüksek performans ve güvenlik sağlıyor.",
-        "development_update": "Testnet incentive programı devam ediyor",
-        "performance_data": "1 saniye finality süresi",
-        "development_stage": "testnet aşamasında (airdrop aktif)",
-        "key_innovation": "AsyncBFT consensus ve unified account sistemi"
+        "tech_detail": "EVM uyumlu L1, 1 saniye finality, AsyncBFT consensus, testnet incentive programı aktif."
     },
     "zama": {
         "mention": "@zama_fhe",
@@ -203,20 +281,16 @@ projects = {
         "ecosystem": "Privacy-focused blockchain protokolü",
         "personality": "gizlilik ve kripto odaklı",
         "token_status": "pre_token",
-        "tech_detail": "Fully Homomorphic Encryption: Verileri decrypt etmeden işleme olanak sağlar. fhEVM ile Solidity'de private smart contract yazılabiliyor. Encrypted state updates, threshold FHE ile validator güvenliği.",
-        "development_update": "fhEVM v0.7 testnet canlı",
-        "performance_data": "~5 TPS şu an, FHE ASIC'ler ile 1000+ TPS hedef",
-        "development_stage": "testnet aşamasında (confidential blockchain protocol)",
-        "key_innovation": "FHE ile tam gizli smart contract'lar"
+        "tech_detail": "fhEVM v0.7 testnet canlı, Solidity'de private smart contracts, FHE ASIC'lerle 1000+ TPS hedef."
     }
 }
 
-# Tweet uzunluk kategorileri - UZUN DETAYLI ANALİZ ODAKLI
+# Tweet uzunluk kategorileri - ESNEK VE MANTIKLI
 TWEET_LENGTHS = {
-    "medium": {"weight": 40, "min": 1000, "max": 2000, "style": "normal"},     # %40 - Normal detaylı
-    "long": {"weight": 35, "min": 2000, "max": 3500, "style": "analysis"},     # %35 - Uzun analiz
-    "extended": {"weight": 20, "min": 3500, "max": 5000, "style": "detailed"}, # %20 - Genişletilmiş
-    "thread": {"weight": 5, "min": 5000, "max": 10000, "style": "thread"}      # %5 - Thread (5-10k karakter)
+    "short": {"weight": 40, "min": 180, "max": 500, "style": "concise"},        # %40 - Kısa ve öz
+    "medium": {"weight": 35, "min": 500, "max": 1200, "style": "normal"},       # %35 - Normal detaylı
+    "long": {"weight": 20, "min": 1200, "max": 2500, "style": "analysis"},      # %20 - Uzun analiz
+    "thread": {"weight": 5, "min": 2500, "max": 4000, "style": "thread"}        # %5 - Thread formatı
 }
 
 # TWEET TİPLERİ - DETAYLI ANALİZ ODAKLI
@@ -268,10 +342,10 @@ TWEET_TYPES = {
     }
 }
 
-# Tweet sistemi - günde 9 tweet sabah 8 gece yarısı arası (Avrupa saati)
+# Tweet sistemi - günde 12 tweet sabah 8 gece yarısı arası (Avrupa saati)
 last_tweet_time = None
-MINIMUM_INTERVAL = 1.8 * 60 * 60  # 1.8 saat (saniye) - günde 9 tweet (16 saat ÷ 9 = 1.8 saat)
-DAILY_TWEET_COUNT = 9
+MINIMUM_INTERVAL = 1.33 * 60 * 60  # 1.33 saat (saniye) - günde 12 tweet (16 saat ÷ 12 = 1.33 saat)
+DAILY_TWEET_COUNT = 12
 TWEET_START_HOUR = 8   # sabah 8 (Avrupa saati)
 TWEET_END_HOUR = 24    # gece yarısı (00:00)
 current_project_index = 0  # Proje rotasyonu için
@@ -507,14 +581,14 @@ def get_time_based_tone():
         }
 
 def choose_tweet_length():
-    """Ağırlıklı rastgele tweet uzunluğu seç - uzun analiz odaklı"""
+    """Ağırlıklı rastgele tweet uzunluğu seç - esnek ve mantıklı"""
     rand = random.randint(1, 100)
     if rand <= 40:
-        return TWEET_LENGTHS["medium"]
+        return TWEET_LENGTHS["short"]
     elif rand <= 75:  # 40 + 35
-        return TWEET_LENGTHS["long"] 
+        return TWEET_LENGTHS["medium"] 
     elif rand <= 95:  # 40 + 35 + 20
-        return TWEET_LENGTHS["extended"]
+        return TWEET_LENGTHS["long"]
     else:  # 5% - Thread
         return TWEET_LENGTHS["thread"]
 
@@ -659,23 +733,37 @@ def clean_tweet(tweet, length_config, clean_project_name):
 def call_gemini_api(prompt, length_config, clean_project_name):
     """Gemini API call - 2.5 Pro model ile tweet oluştur (en güçlü reasoning + 2M context)"""
     try:
+        # Uzunluk bazlı prompt
+        is_short = length_config['style'] == 'concise'
+        is_thread = length_config['style'] == 'thread'
+        
         # Sistem promptu ile user promptu birleştir
-        combined_prompt = f"""Sen crypto takip eden samimi bir insansın. Twitter'da doğal konuşursun.
+        combined_prompt = f"""Sen crypto piyasasını takip eden sıradan bir insansın. AI değilsin, gerçek bir crypto meraklısısın.
 
 KURAL:
-- {length_config['min']}-{length_config['max']} karakter tweet yaz (minimum 1000 karakter gerekli)
-- {clean_project_name} ismini doğal şekilde kullan
-- @ işareti, hashtag kullanma
-- Samimi, arkadaşça konuş - sanki bir arkadaşına anlatıyorsun
-- Detaylı ve derinlemesine analiz yap
-- Paragraflar arasında BOŞ SATIR bırak (görsel olarak daha güzel görünsün)
+- {length_config['min']}-{length_config['max']} karakter tweet yaz
+- {clean_project_name} ismini doğal şekilde kullan (@ işareti kullanma)
+- Hashtag kullanma hiç
+- AI gibi formal değil, arkadaşça konuş
+{f"- Kısa ve öz, direkt sadede gel" if is_short else "- Detaylı açıklama yap ama samimi tondan çıkma"}
+{f"- Paragraflar arasında BOŞ SATIR bırak" if not is_short else ""}
 
-FORMATLLAMA:
-- Her ana fikri ayrı paragrafta yaz
-- Paragraflar arasında bir satır boş bırak
-- Uzun cümleri böl, okunabilir yap
+YAPMA BUNLARI:
+- "analiz ettiğimde", "değerlendirdiğimde", "incelediğimde" AI dili
+- "ekosistem için önemli", "dikkat çekici gelişme" buzzword'ler
+- "bugün X projesini inceledim" klişe başlangıçları
+- Kendi başlangıç ifadesi uydurma, verilen başlangıcı kullan!
 
-İSTEDİĞİM TON: Crypto meraklısı, gerçek insan, abartısız ama detaylı
+YAP BUNLARI:
+- Tweet'e verilen prompt'taki akıllı başlangıçla başla
+- Sonra devam et: "bayağı cool", "ilginç duruyor", "fena değil"
+- "X'in şu kısmı bayağı cool"
+- "henüz erken ama X..."
+
+TON: Crypto takipçisi arkadaş, samimi, meraklı ama abartısız
+
+{f"KISA TWEET STİLİ: Sadede gel, uzatma, direkt söyle ne düşündüğünü" if is_short else ""}
+{f"THREAD STİLİ: Uzun makale formatı, paragraflar arası BOŞ SATIR" if is_thread else ""}
 
 {prompt}
 
@@ -772,10 +860,17 @@ Sadece tweet yaz, başka hiçbir şey ekleme."""
         return None
 
 def get_enhanced_ai_tweet(project_key, sentiment_data, target_length, tweet_type, type_config):
-    """Enhanced AI tweet - önceden seçilmiş tweet tipi ile DOĞAL İNSAN GİBİ"""
+    """Enhanced AI tweet - önceden seçilmiş tweet tipi ile DOĞAL İNSAN GİBİ + AKILLI BAŞLANGIÇ"""
     import random
     project = projects[project_key]
     length_config = target_length
+    
+    # Tweet geçmişine göre akıllı başlangıç stili seç
+    opening_style = select_smart_opening_style(project_key)
+    mention_count = get_project_mention_count(project_key)
+    days_since = get_days_since_last_mention(project_key)
+    
+    print(f"🧠 Akıllı başlangıç: {opening_style} (bahsetme sayısı: {mention_count}, son: {days_since} gün önce)")
     
     # Saate göre ton ayarla (Özellik #12)
     time_tone = get_time_based_tone()
@@ -788,26 +883,71 @@ def get_enhanced_ai_tweet(project_key, sentiment_data, target_length, tweet_type
             # Quote tweet bulunamazsa fallback tip seç
             tweet_type = random.choice(["tech_deep", "casual_discovery", "market_perspective"])
     
-    # Gelişmiş İçerik Stratejisi - Profesyonel Prompt Sistemi
-    
-    # Başlangıç hook'ları
-    hooks = [
-        "Son dönemde dikkat çeken",
-        "Yakından incelenmesi gereken", 
-        "Ekosistem için önemli bir adım olan",
-        "Teknoloji alanında öne çıkan",
-        "Geliştiriciler tarafından izlenen"
-    ]
-    
-    selected_hook = random.choice(hooks)
+    # Akıllı başlangıç ifadeleri
+    smart_openings = {
+        "first_discovery": [
+            "geçen {clean_project_name} gördüm, ilginç duruyor",
+            "arkadaş {clean_project_name}'den bahsetti, baktım",
+            "şansa {clean_project_name}'e denk geldim",
+            "bugün {clean_project_name} ile tanıştım",
+            "rastgele {clean_project_name} keşfettim",
+            "daha önce duymamıştım ama {clean_project_name}"
+        ],
+        "recent_follow_up": [
+            "daha önce {clean_project_name}'den bahsetmiştim, son durum",
+            "{clean_project_name}'i tekrar inceledim",
+            "{clean_project_name} hakkında güncelleme var",
+            "geçen bahsettiğim {clean_project_name}",
+            "{clean_project_name}'te yenilikler olmuş",
+            "az önce {clean_project_name}'e baktım yine"
+        ],
+        "rediscovery": [
+            "uzun zamandır {clean_project_name}'e bakmamıştım",
+            "{clean_project_name}'e yeniden göz attım",
+            "bir süre {clean_project_name}'i unutmuştum ama",
+            "{clean_project_name}'i yeniden keşfettim",
+            "aradan zaman geçti, {clean_project_name} nasıl",
+            "{clean_project_name}'e geri döndüm"
+        ],
+        "frequent_update": [
+            "yine {clean_project_name}'ten bahsedeyim",
+            "{clean_project_name}'teki son durum",
+            "{clean_project_name} sürekli gündemde",
+            "bir kez daha {clean_project_name}",
+            "{clean_project_name}'le ilgili yeni gelişme",
+            "{clean_project_name}'te hareket var yine"
+        ],
+        "regular_check": [
+            "{clean_project_name}'i düzenli takip ediyorum",
+            "{clean_project_name} konusunda güncel durum",
+            "her zamanki {clean_project_name} kontrolü",
+            "{clean_project_name}'i gözden geçiriyorum",
+            "{clean_project_name} takibini sürdürüyorum",
+            "rutinimde {clean_project_name} var"
+        ],
+        "long_term_follow": [
+            "uzun süredir takip ettiğim {clean_project_name}",
+            "{clean_project_name}'le ilgili son gelişmeler",
+            "{clean_project_name} macerası devam ediyor",
+            "eskiden beri izlediğim {clean_project_name}",
+            "{clean_project_name}'in hikayesi",
+            "zamanında keşfettiğim {clean_project_name}"
+        ]
+    }
     
     # Proje ismini hazırla (underscore'ları boşluğa çevir)
     clean_project_name = project['mention'].replace('@', '').replace('_', ' ').title()
+    
+    # Akıllı başlangıç seç
+    selected_opening = random.choice(smart_openings.get(opening_style, smart_openings["first_discovery"]))
+    selected_opening = selected_opening.format(clean_project_name=clean_project_name)
     
     type_prompts = {
         "tech_deep": f"""{clean_project_name} hakkında {"uzun makale tarzı" if length_config['style'] == 'thread' else f"{length_config['min']}-{length_config['max']} karakter"} tweet at. Crypto insanı gibi konuş.
 
 ⚠️ FORMATLLAMA: Paragraflar arasında BOŞ SATIR bırak!
+
+AKILLI BAŞLANGIÇ (MUTLAKA KULLAN): "{selected_opening}"
 
 PROJE: {project['focus']} - {project['specialty']}
 TEKNİK: {project.get('tech_detail', '')}
@@ -824,7 +964,8 @@ YAPMA BUNLARI:
 {"- Çok teknik jargon, ama detaylı açıklama yap" if length_config['style'] == 'thread' else "- Çok uzun cümleler"}
 
 YAP BUNLARI:
-- "lan bu teknoloji bayağı cool", "gerçekten işe yarayabilir"  
+- Verilen başlangıçla başla: "{selected_opening}"
+- "bu teknoloji bayağı cool", "gerçekten işe yarayabilir"  
 - "henüz erken ama potansiyeli var", "şu kısmı çok zekice yapılmış"
 - Samimi, arkadaşça ton - sanki bir arkadaşına anlatıyorsun
 {f"- Makale gibi yapılandır: Giriş-Teknik detay-Kullanım alanları-Sonuç" if length_config['style'] == 'thread' else "- Kısa, net cümleler"}
@@ -832,28 +973,9 @@ YAP BUNLARI:
 
 TON: {time_tone['tone']} + teknik bilgili crypto insanı
 
-{"UZUN MAKALE YAPISI (ÖRNEK):" if length_config['style'] == 'thread' else "ÖRNEKLER:"}
-{f'''
-Giriş paragrafı - Projeyi tanıt ve neden ilginç olduğunu açıkla
-
-(BOŞ SATIR)
-
-Teknik paragraf - Teknolojinin nasıl çalıştığını samimi dille anlat  
-
-(BOŞ SATIR)
-
-Kullanım paragrafı - Gerçek hayatta nerelerde kullanılacağını söyle
-
-(BOŞ SATIR)
-
-Karşılaştırma paragrafı - Diğer projelerle kıyasla
-
-(BOŞ SATIR)
-
-Sonuç paragrafı - Gelecek ve potansiyel hakkında düşünceler''' if length_config['style'] == 'thread' else '''
-"X projesinin şu özelliği gerçekten akıllıca. Böyle yaklaşımları seviyorum..."
-"Araştırırken fark ettim, X'in teknolojisi diğerlerinden farklı..."
-"X'in yaklaşımı ilginç. Şu sorunu çözmesi hoşuma gitti..."'''}
+ÖRNEK YAPI:
+"{selected_opening}. teknolojisi gerçekten farklı..."
+"{selected_opening}, özellikle şu kısmı çok zekice..."
 
 Sadece tweet yaz, açıklama yapma.""",
 
@@ -864,23 +986,27 @@ Sadece tweet yaz, açıklama yapma.""",
 DURUM: {project.get('development_stage', project['price_action'])}
 ÖZELLIK: {project['specialty']}
 
-STIL: Yeni keşfetmiş bir crypto meraklısı gibi konuş
+AKILLI BAŞLANGIÇ (MUTLAKA KULLAN): "{selected_opening}"
+
+ÖNEMLİ: Bu başlangıçla tweet'e başla, sonra devam et!
+
+STIL: Crypto meraklısı, samimi
 
 YAPMA:
-- "dikkatimi çekti", "araştırırken karşıma çıktı" klişe başlangıçlar
+- "dikkatimi çekti", "araştırırken karşıma çıktı" klişe başlangıçlar  
 - "incelemesi gereken", "önemli bir adım" resmi dil
+- Verilen başlangıcı değiştirme!
 
 YAP:  
-- "bugün {clean_project_name} ile tanıştım, ilginç..."
-- "rastgele {clean_project_name} gördüm, bayağı cool..."
-- "daha önce duymamıştım ama {clean_project_name}..."
-- "hmm {clean_project_name} ne lan diye baktım..."
+- Verilen başlangıçla başla: "{selected_opening}"
+- Sonra devam et: "bayağı cool...", "ilginç duruyor...", "fena değil..."
+- Samimi ton kullan
 
-TON: Samimi, meraklı, biraz şaşırmış ama ilgili
-ÖRNEKLER:
-"Bugün ilk defa X diye bir şey duydum, ne olduğuna baktım..."
-"X'i hiç bilmiyordum ama şu özelliği bayağı mantıklı geldi..."
-"Rastgele X'e denk geldim, henüz yeni galiba ama..."
+TON: Samimi, meraklı
+ÖRNEK YAPILAR:
+"{selected_opening}. şu özelliği bayağı mantıklı geldi..."
+"{selected_opening}, henüz yeni galiba ama..."
+"{selected_opening}. teknolojisi ilginç duruyor..."
 
 Sadece tweet yaz.""",
 
@@ -1111,7 +1237,11 @@ Tweet yaz."""
     # AI API call - Gemini öncelikli, OpenAI fallback
     if gemini_key:
         # Gemini API call
-        return call_gemini_api(prompt, length_config, clean_project_name)
+        result_tweet = call_gemini_api(prompt, length_config, clean_project_name)
+        if result_tweet:
+            # Tweet başarılı, history'yi güncelle
+            update_project_mention_history(project_key, opening_style)
+        return result_tweet
     elif openai_key:
         # ChatGPT API call (fallback)
         headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
@@ -1182,7 +1312,11 @@ Sadece tweet yaz."""
                 tweet = result['choices'][0]['message']['content'].strip()
                 
                 print(f"✅ ChatGPT Tweet: {tweet}")
-                return clean_tweet(tweet, length_config, clean_project_name)
+                cleaned_tweet = clean_tweet(tweet, length_config, clean_project_name)
+                if cleaned_tweet:
+                    # Tweet başarılı, history'yi güncelle
+                    update_project_mention_history(project_key, opening_style)
+                return cleaned_tweet
             else:
                 print(f"❌ OpenAI API hatası: {response.status_code}")
                 print(f"❌ Response body: {response.text}")
