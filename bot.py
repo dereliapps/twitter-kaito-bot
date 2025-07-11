@@ -883,55 +883,49 @@ def get_enhanced_ai_tweet(project_key, sentiment_data, target_length, tweet_type
             # Quote tweet bulunamazsa fallback tip seç
             tweet_type = random.choice(["tech_deep", "casual_discovery", "market_perspective"])
     
-    # Akıllı başlangıç ifadeleri
+    # Sade ve doğal başlangıçlar - opsiyonel kullanım için
     smart_openings = {
         "first_discovery": [
-            "geçen {clean_project_name} gördüm, ilginç duruyor",
-            "arkadaş {clean_project_name}'den bahsetti, baktım",
-            "şansa {clean_project_name}'e denk geldim",
-            "bugün {clean_project_name} ile tanıştım",
-            "rastgele {clean_project_name} keşfettim",
-            "daha önce duymamıştım ama {clean_project_name}"
+            "{clean_project_name}",
+            "{clean_project_name} projesi", 
+            "{clean_project_name} konusunda",
+            "{clean_project_name}'e baktım",
+            "{clean_project_name} hakkında"
         ],
         "recent_follow_up": [
-            "daha önce {clean_project_name}'den bahsetmiştim, son durum",
-            "{clean_project_name}'i tekrar inceledim",
-            "{clean_project_name} hakkında güncelleme var",
-            "geçen bahsettiğim {clean_project_name}",
-            "{clean_project_name}'te yenilikler olmuş",
-            "az önce {clean_project_name}'e baktım yine"
+            "{clean_project_name}",
+            "{clean_project_name} güncellemesi",
+            "{clean_project_name} konusunda",
+            "{clean_project_name}'te durum",
+            "{clean_project_name} hakkında"
         ],
         "rediscovery": [
-            "uzun zamandır {clean_project_name}'e bakmamıştım",
-            "{clean_project_name}'e yeniden göz attım",
-            "bir süre {clean_project_name}'i unutmuştum ama",
-            "{clean_project_name}'i yeniden keşfettim",
-            "aradan zaman geçti, {clean_project_name} nasıl",
-            "{clean_project_name}'e geri döndüm"
+            "{clean_project_name}",
+            "{clean_project_name} projesi",
+            "{clean_project_name} konusunda",
+            "{clean_project_name}'e tekrar baktım",
+            "{clean_project_name} hakkında"
         ],
         "frequent_update": [
-            "yine {clean_project_name}'ten bahsedeyim",
-            "{clean_project_name}'teki son durum",
-            "{clean_project_name} sürekli gündemde",
-            "bir kez daha {clean_project_name}",
-            "{clean_project_name}'le ilgili yeni gelişme",
-            "{clean_project_name}'te hareket var yine"
+            "{clean_project_name}",
+            "{clean_project_name} konusunda",
+            "{clean_project_name} hakkında",
+            "{clean_project_name} güncellemesi",
+            "{clean_project_name} projesi"
         ],
         "regular_check": [
-            "{clean_project_name}'i düzenli takip ediyorum",
-            "{clean_project_name} konusunda güncel durum",
-            "her zamanki {clean_project_name} kontrolü",
-            "{clean_project_name}'i gözden geçiriyorum",
-            "{clean_project_name} takibini sürdürüyorum",
-            "rutinimde {clean_project_name} var"
+            "{clean_project_name}",
+            "{clean_project_name} konusunda",
+            "{clean_project_name} hakkında",
+            "{clean_project_name} projesi",
+            "{clean_project_name} durumu"
         ],
         "long_term_follow": [
-            "uzun süredir takip ettiğim {clean_project_name}",
-            "{clean_project_name}'le ilgili son gelişmeler",
-            "{clean_project_name} macerası devam ediyor",
-            "eskiden beri izlediğim {clean_project_name}",
-            "{clean_project_name}'in hikayesi",
-            "zamanında keşfettiğim {clean_project_name}"
+            "{clean_project_name}",
+            "{clean_project_name} konusunda",
+            "{clean_project_name} hakkında", 
+            "{clean_project_name} projesi",
+            "{clean_project_name} gelişmeleri"
         ]
     }
     
@@ -947,8 +941,6 @@ def get_enhanced_ai_tweet(project_key, sentiment_data, target_length, tweet_type
 
 ⚠️ FORMATLLAMA: Paragraflar arasında BOŞ SATIR bırak!
 
-AKILLI BAŞLANGIÇ (MUTLAKA KULLAN): "{selected_opening}"
-
 PROJE: {project['focus']} - {project['specialty']}
 TEKNİK: {project.get('tech_detail', '')}
 İNOVASYON: {project.get('key_innovation', '')}
@@ -961,21 +953,25 @@ ZAMAN TONU: {time_tone['modifier']}
 YAPMA BUNLARI:
 - "ekosistem için önemli", "göz önünde bulundurulmalı" gibi AI dili
 - "derinlemesine analiz", "profesyonel yaklaşım" gibi buzzword'ler  
+- "şansa denk geldim", "arkadaş bahsetti" gibi yapay hikayeler
+- Gereksiz giriş hikayeleri, direkt konuya gir
 {"- Çok teknik jargon, ama detaylı açıklama yap" if length_config['style'] == 'thread' else "- Çok uzun cümleler"}
 
 YAP BUNLARI:
-- Verilen başlangıçla başla: "{selected_opening}"
+- Direkt proje ismiyle başla: "{clean_project_name}"
 - "bu teknoloji bayağı cool", "gerçekten işe yarayabilir"  
 - "henüz erken ama potansiyeli var", "şu kısmı çok zekice yapılmış"
 - Samimi, arkadaşça ton - sanki bir arkadaşına anlatıyorsun
+- Doğal başlangıç yap, yapay hikaye anlatma
 {f"- Makale gibi yapılandır: Giriş-Teknik detay-Kullanım alanları-Sonuç" if length_config['style'] == 'thread' else "- Kısa, net cümleler"}
 {f"- Her paragraf ayrı bir konuya odaklan" if length_config['style'] == 'thread' else ""}
 
 TON: {time_tone['tone']} + teknik bilgili crypto insanı
 
-ÖRNEK YAPI:
-"{selected_opening}. teknolojisi gerçekten farklı..."
-"{selected_opening}, özellikle şu kısmı çok zekice..."
+ÖRNEK DOĞAL BAŞLANGIÇLAR:
+"{clean_project_name} gerçekten ilginç bir proje..."
+"{clean_project_name}'in teknolojisi farklı..."
+"{clean_project_name} şu an geliştirme aşamasında..."
 
 Sadece tweet yaz, açıklama yapma.""",
 
@@ -986,27 +982,25 @@ Sadece tweet yaz, açıklama yapma.""",
 DURUM: {project.get('development_stage', project['price_action'])}
 ÖZELLIK: {project['specialty']}
 
-AKILLI BAŞLANGIÇ (MUTLAKA KULLAN): "{selected_opening}"
-
-ÖNEMLİ: Bu başlangıçla tweet'e başla, sonra devam et!
-
 STIL: Crypto meraklısı, samimi
 
 YAPMA:
 - "dikkatimi çekti", "araştırırken karşıma çıktı" klişe başlangıçlar  
 - "incelemesi gereken", "önemli bir adım" resmi dil
-- Verilen başlangıcı değiştirme!
+- "şansa denk geldim", "arkadaş bahsetti" yapay hikayeler
+- Gereksiz giriş hikayeleri
 
 YAP:  
-- Verilen başlangıçla başla: "{selected_opening}"
-- Sonra devam et: "bayağı cool...", "ilginç duruyor...", "fena değil..."
+- Direkt proje ismiyle başla: "{clean_project_name}"
+- Doğal başlangıç yap: "bayağı cool...", "ilginç duruyor...", "fena değil..."
 - Samimi ton kullan
+- Konuya odaklan, hikaye anlatma
 
 TON: Samimi, meraklı
-ÖRNEK YAPILAR:
-"{selected_opening}. şu özelliği bayağı mantıklı geldi..."
-"{selected_opening}, henüz yeni galiba ama..."
-"{selected_opening}. teknolojisi ilginç duruyor..."
+ÖRNEK DOĞAL YAPILAR:
+"{clean_project_name} şu özelliği bayağı mantıklı..."
+"{clean_project_name} henüz yeni galiba ama..."
+"{clean_project_name} teknolojisi ilginç duruyor..."
 
 Sadece tweet yaz.""",
 
